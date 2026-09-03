@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { ShoppingBag, Search, SlidersHorizontal, Droplets, X, ArrowRight } from 'lucide-react';
-import { MOCK_MARKET_ITEMS } from '@/lib/constants';
-import { GarmentCategory, GarmentCondition } from '@/lib/types';
+import { GarmentCategory, GarmentCondition, MarketItem } from '@/lib/types';
 import { formatRupiah, formatNumber } from '@/lib/utils';
 import { ConditionBadge } from '@/components/ui/Badge';
 import { useApp } from '@/lib/store';
+import { fetchMarketItems } from '@/lib/supabase/data';
 
 const CATEGORIES: GarmentCategory[] = ['Semua', 'Wanita', 'Pria', 'Denim & Jeans', 'Outerwear', 'Upcycled Bags', 'Vintage'];
 const CONDITIONS: { id: GarmentCondition | 'ALL'; label: string }[] = [
@@ -21,17 +21,22 @@ const SIZES = ['Semua', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 export default function MarketPage() {
   const { addToCart } = useApp();
+  const [items, setItems] = useState<MarketItem[]>([]);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<GarmentCategory>('Semua');
   const [condition, setCondition] = useState<GarmentCondition | 'ALL'>('ALL');
   const [size, setSize] = useState('Semua');
   const [maxPrice, setMaxPrice] = useState(1500000);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [selectedItem, setSelectedItem] = useState<typeof MOCK_MARKET_ITEMS[0] | null>(null);
+  const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
 
+  useEffect(() => {
+    fetchMarketItems().then(setItems);
+  }, []);
+
   const filtered = useMemo(() => {
-    return MOCK_MARKET_ITEMS.filter(item => {
+    return items.filter(item => {
       if (query && !item.title.toLowerCase().includes(query.toLowerCase()) && !(item.brand ?? '').toLowerCase().includes(query.toLowerCase())) return false;
       if (category !== 'Semua' && item.category !== category) return false;
       if (condition !== 'ALL' && item.condition !== condition) return false;
@@ -39,7 +44,7 @@ export default function MarketPage() {
       if (item.price > maxPrice) return false;
       return true;
     });
-  }, [query, category, condition, size, maxPrice]);
+  }, [items, query, category, condition, size, maxPrice]);
 
   return (
     <div>
@@ -147,7 +152,7 @@ export default function MarketPage() {
                   }}
                   className="img-hover-zoom"
                 >
-                  <Image src={item.images[0]} alt={item.title} fill className="object-cover" sizes="25vw" />
+                  <Image src={item.images[0] || '/hero-portrait.jpg'} alt={item.title} fill className="object-cover" sizes="25vw" />
                   <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem' }}>
                     <ConditionBadge condition={item.condition} />
                   </div>
@@ -189,7 +194,7 @@ export default function MarketPage() {
 
             {/* Image */}
             <div style={{ position: 'relative', minHeight: '30rem' }} className="img-hover-zoom">
-              <Image src={selectedItem.images[0]} alt={selectedItem.title} fill className="object-cover" sizes="50vw" />
+              <Image src={selectedItem.images[0] || '/hero-portrait.jpg'} alt={selectedItem.title} fill className="object-cover" sizes="50vw" />
             </div>
 
             {/* Details */}

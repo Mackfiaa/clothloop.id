@@ -1,14 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Recycle, ShoppingBag, Scissors, Award, MapPin, ChevronRight } from 'lucide-react';
 import { EcoCalculator } from '@/components/home/EcoCalculator';
 import { ConditionBadge } from '@/components/ui/Badge';
-import { MOCK_MARKET_ITEMS, MOCK_ARTISANS, MOCK_DROP_POINTS, NATIONAL_IMPACT_METRICS } from '@/lib/constants';
 import { formatRupiah, formatNumber } from '@/lib/utils';
 import { useApp } from '@/lib/store';
+import { fetchMarketItems, fetchArtisans, fetchDropPoints } from '@/lib/supabase/data';
+import { MarketItem, ArtisanProfile, DropPoint } from '@/lib/types';
+
+// Dynamically import OpenStreetMap component to prevent SSR errors
+const DropPointMap = dynamic(
+  () => import('@/components/map/DropPointMap').then((mod) => mod.DropPointMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div style={{ height: '360px', background: 'var(--cream-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem' }}>
+        Memuat OpenStreetMap...
+      </div>
+    ),
+  }
+);
 
 const MARQUEE_STATS = [
   { label: 'kg pakaian diselamatkan', value: '148,920' },
@@ -25,7 +40,7 @@ const pillars = [
     icon: Recycle,
     title: 'ClothDrop',
     sub: 'Donasi & Daur Ulang',
-    body: '68+ titik kumpul di kota besar Indonesia. Antar mandiri atau kurir penjemputan — pakaian lamamu mendapat pelacakan QR real-time.',
+    body: 'Titik kumpul di kota besar Indonesia. Antar mandiri atau kurir penjemputan — pakaian lamamu mendapat pelacakan QR real-time.',
     href: '/drop',
     bg: 'var(--sage-faint)',
   },
@@ -61,6 +76,19 @@ const pillars = [
 export default function HomePage() {
   const { addToCart } = useApp();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
+  const [artisans, setArtisans] = useState<ArtisanProfile[]>([]);
+  const [dropPoints, setDropPoints] = useState<DropPoint[]>([]);
+  const [selectedPointId, setSelectedPointId] = useState<string>('');
+
+  useEffect(() => {
+    fetchMarketItems().then(setMarketItems);
+    fetchArtisans().then(setArtisans);
+    fetchDropPoints().then(data => {
+      setDropPoints(data);
+      if (data.length > 0) setSelectedPointId(data[0].id);
+    });
+  }, []);
 
   return (
     <div>
@@ -113,8 +141,8 @@ export default function HomePage() {
               {/* Trust Strip */}
               <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--line)' }}>
                 {[
-                  ['68+', 'Drop Points'],
-                  ['142', 'Artisan Mitra'],
+                  [`${dropPoints.length || 6}+`, 'Drop Points'],
+                  [`${artisans.length || 3}+`, 'Artisan Mitra'],
                   ['18K+', 'Eco-Citizens'],
                 ].map(([v, l]) => (
                   <div key={l} style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
@@ -190,7 +218,6 @@ export default function HomePage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '1.5rem' }}>
             {pillars.map((p, i) => {
               const Icon = p.icon;
-              // Broken grid: col spans: 5, 7, 7, 5
               const spans = [5, 7, 7, 5];
               return (
                 <Link
@@ -253,8 +280,8 @@ export default function HomePage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '1.5rem' }}>
 
             {/* Large card */}
-            {MOCK_MARKET_ITEMS[0] && (() => {
-              const item = MOCK_MARKET_ITEMS[0];
+            {marketItems[0] && (() => {
+              const item = marketItems[0];
               return (
                 <div
                   key={item.id}
@@ -263,7 +290,7 @@ export default function HomePage() {
                   onMouseLeave={() => setHoveredItem(null)}
                 >
                   <div style={{ position: 'relative', aspectRatio: '3/4', overflow: 'hidden', background: 'var(--cream-deep)' }} className="img-hover-zoom">
-                    <Image src={item.images[0]} alt={item.title} fill className="object-cover" sizes="42vw" />
+                    <Image src={item.images[0] || '/hero-portrait.jpg'} alt={item.title} fill className="object-cover" sizes="42vw" />
                     <div style={{ position: 'absolute', top: '1rem', left: '1rem' }}>
                       <ConditionBadge condition={item.condition} />
                     </div>
@@ -290,7 +317,7 @@ export default function HomePage() {
             {/* Right column: flatlay image + 2 smaller products stacked */}
             <div style={{ gridColumn: 'span 7', display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto auto', gap: '1.5rem' }}>
 
-              {/* Flatlay editorial image — spans full 2 columns top */}
+              {/* Flatlay editorial image */}
               <div style={{ gridColumn: 'span 2', position: 'relative', aspectRatio: '16/7', overflow: 'hidden', background: 'var(--cream-deep)' }} className="img-hover-zoom">
                 <Image src="/hero-flatlay.jpg" alt="Sustainable fashion flatlay" fill className="object-cover" sizes="60vw" />
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', padding: '2rem', background: 'linear-gradient(to top, rgba(15,14,13,0.55) 0%, transparent 60%)' }}>
@@ -303,14 +330,14 @@ export default function HomePage() {
               </div>
 
               {/* Products row */}
-              {MOCK_MARKET_ITEMS.slice(1, 3).map(item => (
+              {marketItems.slice(1, 3).map(item => (
                 <div
                   key={item.id}
                   onMouseEnter={() => setHoveredItem(item.id)}
                   onMouseLeave={() => setHoveredItem(null)}
                 >
                   <div style={{ position: 'relative', aspectRatio: '1/1', overflow: 'hidden', background: 'var(--cream-deep)' }} className="img-hover-zoom">
-                    <Image src={item.images[0]} alt={item.title} fill className="object-cover" sizes="30vw" />
+                    <Image src={item.images[0] || '/hero-portrait.jpg'} alt={item.title} fill className="object-cover" sizes="30vw" />
                     <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem' }}>
                       <ConditionBadge condition={item.condition} />
                     </div>
@@ -353,7 +380,7 @@ export default function HomePage() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2rem' }}>
-            {MOCK_ARTISANS.map(artisan => (
+            {artisans.map(artisan => (
               <Link key={artisan.id} href="/craft" className="artisan-card-link" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ position: 'relative', aspectRatio: '4/5', overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }} className="img-hover-zoom">
                   <Image src={artisan.coverImage} alt={artisan.name} fill className="object-cover" sizes="30vw" />
@@ -371,48 +398,34 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── DROP POINT TEASER ───────────────────────────── */}
+      {/* ── DROP POINT TEASER WITH OPENSTREETMAP ───────────── */}
       <section style={{ background: 'var(--cream)', padding: '6rem 0', borderBottom: '1px solid var(--line)' }}>
         <div className="container-editorial">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'start' }}>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <span className="label-caps">68+ Titik Kumpul</span>
+              <span className="label-caps">{dropPoints.length || 6}+ Titik Kumpul Nasional</span>
               <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', lineHeight: 1.1 }}>
                 Ada ClothDrop<br />
                 <em style={{ fontStyle: 'italic', color: 'var(--sage)' }}>di dekatmu.</em>
               </h2>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.9375rem', color: 'var(--ink-muted)', lineHeight: 1.75, maxWidth: '24rem' }}>
-                Jakarta, Bandung, Surabaya, Bali, Yogyakarta — di kafe rekanan, mall, dan bank sampah digital terdekat.
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.9375rem', color: 'var(--ink-muted)', lineHeight: 1.75, maxWidth: '26rem' }}>
+                Jakarta, Bandung, Surabaya, Bali, Yogyakarta — di kafe rekanan, mall, dan bank sampah digital terdekat. Buka peta OpenStreetMap untuk rute langsung.
               </p>
               <Link href="/drop" className="btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
-                Cari Drop Point
+                Cari & Booking Drop Point
                 <MapPin size={14} />
               </Link>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-              {MOCK_DROP_POINTS.slice(0, 4).map((pt, i) => (
-                <Link
-                  key={pt.id}
-                  href={`/drop?point=${pt.id}`}
-                  className="drop-row"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '1.25rem 0',
-                    borderBottom: i < 3 ? '1px solid var(--line)' : 'none',
-                    textDecoration: 'none',
-                  }}
-                >
-                  <div>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--ink-muted)', marginBottom: '0.25rem', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{pt.city} · {pt.category}</p>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.9375rem', fontWeight: 500, color: 'var(--ink)' }}>{pt.name}</p>
-                  </div>
-                  <ArrowRight size={16} strokeWidth={1.5} style={{ color: 'var(--ink-faint)', flexShrink: 0, marginLeft: '1rem' }} />
-                </Link>
-              ))}
+            {/* Interactive OpenStreetMap on Homepage */}
+            <div>
+              <DropPointMap
+                points={dropPoints}
+                selectedPointId={selectedPointId}
+                onSelectPoint={(id) => setSelectedPointId(id)}
+                height="340px"
+              />
             </div>
 
           </div>

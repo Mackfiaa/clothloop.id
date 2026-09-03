@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Scissors, Star, ArrowRight, Send, CheckCircle2 } from 'lucide-react';
-import { MOCK_ARTISANS } from '@/lib/constants';
-import { CraftServiceType } from '@/lib/types';
+import { CraftServiceType, ArtisanProfile } from '@/lib/types';
 import { useApp } from '@/lib/store';
 import { formatRupiah, generateBookingCode } from '@/lib/utils';
+import { fetchArtisans } from '@/lib/supabase/data';
 
 const SERVICE_TYPES: { id: CraftServiceType; label: string; desc: string; price: string }[] = [
   { id: 'REPAIR', label: 'Repair & Mending', desc: 'Tambal dan perkuat kain yang rusak dengan teknik presisi tinggi.', price: 'Mulai Rp 65.000' },
@@ -17,14 +17,25 @@ const SERVICE_TYPES: { id: CraftServiceType; label: string; desc: string; price:
 
 export default function CraftPage() {
   const { addNotification } = useApp();
-  const [selectedArtisan, setSelectedArtisan] = useState(MOCK_ARTISANS[0]);
+  const [artisans, setArtisans] = useState<ArtisanProfile[]>([]);
+  const [selectedArtisan, setSelectedArtisan] = useState<ArtisanProfile | null>(null);
   const [service, setService] = useState<CraftServiceType>('REPAIR');
   const [garmentDesc, setGarmentDesc] = useState('');
   const [visionDesc, setVisionDesc] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
+  useEffect(() => {
+    fetchArtisans().then(data => {
+      setArtisans(data);
+      if (data.length > 0) {
+        setSelectedArtisan(data[0]);
+      }
+    });
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedArtisan) return;
     const code = generateBookingCode('CCR');
     addNotification('success', 'Request dikirim!', `Kode booking ${code}. ${selectedArtisan.name} akan merespons dalam 24 jam.`);
     setSubmitted(true);
@@ -84,17 +95,17 @@ export default function CraftPage() {
             <div>
               <span className="label-caps">Pilih Artisan</span>
               <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginTop: '0.5rem', lineHeight: 1.1 }}>
-                {MOCK_ARTISANS.length} pengrajin terverifikasi
+                {artisans.length} pengrajin terverifikasi
               </h2>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
-            {MOCK_ARTISANS.map(artisan => (
+            {artisans.map(artisan => (
               <button
                 key={artisan.id}
                 onClick={() => setSelectedArtisan(artisan)}
                 style={{
-                  border: selectedArtisan.id === artisan.id ? '1px solid var(--terracotta)' : '1px solid transparent',
+                  border: selectedArtisan?.id === artisan.id ? '1px solid var(--terracotta)' : '1px solid transparent',
                   background: 'transparent',
                   cursor: 'pointer',
                   textAlign: 'left',
@@ -105,7 +116,7 @@ export default function CraftPage() {
                 {/* Portrait */}
                 <div style={{ position: 'relative', aspectRatio: '4/5', overflow: 'hidden', background: 'var(--cream-deep)' }} className="img-hover-zoom">
                   <Image src={artisan.coverImage} alt={artisan.name} fill className="object-cover" sizes="25vw" />
-                  {selectedArtisan.id === artisan.id && (
+                  {selectedArtisan?.id === artisan.id && (
                     <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', background: 'var(--terracotta)', borderRadius: '9999px', padding: '0.25rem' }}>
                       <CheckCircle2 size={16} strokeWidth={2} style={{ color: '#fff' }} />
                     </div>
@@ -130,87 +141,89 @@ export default function CraftPage() {
         </div>
 
         {/* Request Form */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'start' }}>
+        {selectedArtisan && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'start' }}>
 
-          {/* Left: Form */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            <div style={{ borderTop: '3px solid var(--terracotta)', paddingTop: '1.5rem', marginBottom: '2.5rem' }}>
-              <span className="label-caps" style={{ color: 'var(--terracotta)' }}>Buat Request Upcycling</span>
-              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.75rem', marginTop: '0.5rem', lineHeight: 1.15 }}>
-                Ceritakan visimu.
-              </h2>
+            {/* Left: Form */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+              <div style={{ borderTop: '3px solid var(--terracotta)', paddingTop: '1.5rem', marginBottom: '2.5rem' }}>
+                <span className="label-caps" style={{ color: 'var(--terracotta)' }}>Buat Request Upcycling</span>
+                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.75rem', marginTop: '0.5rem', lineHeight: 1.15 }}>
+                  Ceritakan visimu.
+                </h2>
+              </div>
+
+              {submitted ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem' }}>
+                  <CheckCircle2 size={36} strokeWidth={1.25} style={{ color: 'var(--terracotta)' }} />
+                  <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.375rem', color: 'var(--ink)' }}>Request Terkirim!</h3>
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink-muted)', lineHeight: 1.7 }}>
+                    <strong>{selectedArtisan.name}</strong> akan merespons dalam 24 jam. Pantau di halaman Eco Impact.
+                  </p>
+                  <button onClick={() => setSubmitted(false)} className="btn-secondary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
+                    Buat Request Baru
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  <div style={{ padding: '1.25rem', background: 'var(--terracotta-light)', border: '1px solid rgba(196,107,58,0.2)', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                    <span className="label-caps" style={{ color: 'var(--terracotta)', fontSize: '0.625rem' }}>Artisan terpilih</span>
+                    <p style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1rem', color: 'var(--ink)' }}>{selectedArtisan.name}</p>
+                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)' }}>{selectedService.label} · {selectedService.price}</p>
+                  </div>
+
+                  {[
+                    { label: 'Deskripsi Pakaian', value: garmentDesc, setter: setGarmentDesc, placeholder: "Jaket denim washed ukuran L, ada robekan 5cm di siku kanan..." },
+                    { label: 'Visi Hasil Akhir', value: visionDesc, setter: setVisionDesc, placeholder: "Ingin ditambahkan patch bunga sakura di punggung, dengan sulam warna emas..." },
+                  ].map(field => (
+                    <div key={field.label} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <span className="label-caps" style={{ fontSize: '0.625rem' }}>{field.label}</span>
+                      <textarea
+                        value={field.value}
+                        onChange={e => field.setter(e.target.value)}
+                        placeholder={field.placeholder}
+                        rows={3}
+                        required
+                        style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--line-strong)', padding: '0.5rem 0', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink)', outline: 'none', resize: 'none', width: '100%' }}
+                      />
+                    </div>
+                  ))}
+
+                  <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', background: 'var(--terracotta)' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--ink)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--terracotta)')}>
+                    <Send size={14} />
+                    Kirim Request ke Artisan
+                  </button>
+                </form>
+              )}
             </div>
 
-            {submitted ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '1rem' }}>
-                <CheckCircle2 size={36} strokeWidth={1.25} style={{ color: 'var(--terracotta)' }} />
-                <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.375rem', color: 'var(--ink)' }}>Request Terkirim!</h3>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink-muted)', lineHeight: 1.7 }}>
-                  <strong>{selectedArtisan.name}</strong> akan merespons dalam 24 jam. Pantau di halaman Eco Impact.
-                </p>
-                <button onClick={() => setSubmitted(false)} className="btn-secondary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
-                  Buat Request Baru
-                </button>
+            {/* Right: Selected Artisan Detail */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '5rem' }}>
+              <div style={{ position: 'relative', aspectRatio: '4/5', overflow: 'hidden', background: 'var(--cream-deep)' }} className="img-hover-zoom">
+                <Image src={selectedArtisan.coverImage} alt={selectedArtisan.name} fill className="object-cover" sizes="40vw" />
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <div style={{ padding: '1.25rem', background: 'var(--terracotta-light)', border: '1px solid rgba(196,107,58,0.2)', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                  <span className="label-caps" style={{ color: 'var(--terracotta)', fontSize: '0.625rem' }}>Artisan terpilih</span>
-                  <p style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1rem', color: 'var(--ink)' }}>{selectedArtisan.name}</p>
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)' }}>{selectedService.label} · {selectedService.price}</p>
-                </div>
-
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.375rem', color: 'var(--ink)', marginBottom: '0.25rem' }}>{selectedArtisan.name}</h3>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink-muted)', marginBottom: '1rem' }}>{selectedArtisan.city} · {selectedArtisan.yearsOfExperience} tahun</p>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink-muted)', lineHeight: 1.75 }}>{selectedArtisan.bio}</p>
+              </div>
+              <div style={{ display: 'flex', gap: '2rem', padding: '1.25rem 0', borderTop: '1px solid var(--line)' }}>
                 {[
-                  { label: 'Deskripsi Pakaian', value: garmentDesc, setter: setGarmentDesc, placeholder: "Jaket denim washed ukuran L, ada robekan 5cm di siku kanan..." },
-                  { label: 'Visi Hasil Akhir', value: visionDesc, setter: setVisionDesc, placeholder: "Ingin ditambahkan patch bunga sakura di punggung, dengan sulam warna emas..." },
-                ].map(field => (
-                  <div key={field.label} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <span className="label-caps" style={{ fontSize: '0.625rem' }}>{field.label}</span>
-                    <textarea
-                      value={field.value}
-                      onChange={e => field.setter(e.target.value)}
-                      placeholder={field.placeholder}
-                      rows={3}
-                      required
-                      style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--line-strong)', padding: '0.5rem 0', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink)', outline: 'none', resize: 'none', width: '100%' }}
-                    />
+                  [`${selectedArtisan.rating}`, 'Rating'],
+                  [`${selectedArtisan.completedOrders}`, 'Proyek'],
+                  [`${selectedArtisan.yearsOfExperience}`, 'Tahun'],
+                ].map(([v, l]) => (
+                  <div key={l}>
+                    <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.5rem', color: 'var(--terracotta)', display: 'block' }}>{v}</span>
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)' }}>{l}</span>
                   </div>
                 ))}
-
-                <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', background: 'var(--terracotta)' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--ink)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'var(--terracotta)')}>
-                  <Send size={14} />
-                  Kirim Request ke Artisan
-                </button>
-              </form>
-            )}
-          </div>
-
-          {/* Right: Selected Artisan Detail */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '5rem' }}>
-            <div style={{ position: 'relative', aspectRatio: '4/5', overflow: 'hidden', background: 'var(--cream-deep)' }} className="img-hover-zoom">
-              <Image src={selectedArtisan.coverImage} alt={selectedArtisan.name} fill className="object-cover" sizes="40vw" />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-              <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.375rem', color: 'var(--ink)', marginBottom: '0.25rem' }}>{selectedArtisan.name}</h3>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink-muted)', marginBottom: '1rem' }}>{selectedArtisan.city} · {selectedArtisan.yearsOfExperience} tahun</p>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink-muted)', lineHeight: 1.75 }}>{selectedArtisan.bio}</p>
-            </div>
-            <div style={{ display: 'flex', gap: '2rem', padding: '1.25rem 0', borderTop: '1px solid var(--line)' }}>
-              {[
-                [`${selectedArtisan.rating}`, 'Rating'],
-                [`${selectedArtisan.completedOrders}`, 'Proyek'],
-                [`${selectedArtisan.yearsOfExperience}`, 'Tahun'],
-              ].map(([v, l]) => (
-                <div key={l}>
-                  <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.5rem', color: 'var(--terracotta)', display: 'block' }}>{v}</span>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)' }}>{l}</span>
-                </div>
-              ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

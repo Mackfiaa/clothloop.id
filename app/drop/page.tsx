@@ -1,19 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { Recycle, MapPin, Clock, Phone, QrCode, CheckCircle2, Truck, Store, ArrowRight } from 'lucide-react';
-import { MOCK_DROP_POINTS } from '@/lib/constants';
-import { DropMethod, DropOrder } from '@/lib/types';
+import { Recycle, MapPin, Clock, Phone, QrCode, CheckCircle2, Truck, Store, ArrowRight, Map as MapIcon, List } from 'lucide-react';
+import { DropMethod, DropOrder, DropPoint } from '@/lib/types';
 import { calculateEcoImpact, formatNumber, generateBookingCode } from '@/lib/utils';
 import { useApp } from '@/lib/store';
+import { fetchDropPoints } from '@/lib/supabase/data';
+
+// Dynamically import OpenStreetMap component to prevent SSR hydration errors
+const DropPointMap = dynamic(
+  () => import('@/components/map/DropPointMap').then((mod) => mod.DropPointMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div style={{ height: '320px', background: 'var(--cream-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem' }}>
+        Memuat OpenStreetMap...
+      </div>
+    ),
+  }
+);
 
 export default function DropPage() {
-  const { addDropOrder, dropOrders } = useApp();
+  const { addDropOrder, dropOrders, currentUser, userProfile } = useApp();
 
+  const [pointsList, setPointsList] = useState<DropPoint[]>([]);
   const [method, setMethod] = useState<DropMethod>('DROPOFF');
-  const [selectedPointId, setSelectedPointId] = useState(MOCK_DROP_POINTS[0].id);
+  const [selectedPointId, setSelectedPointId] = useState<string>('');
   const [cityFilter, setCityFilter] = useState('Semua');
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('map');
   const [weight, setWeight] = useState(3.5);
   const [itemCount, setItemCount] = useState(8);
   const [donorName, setDonorName] = useState('');
@@ -22,11 +38,27 @@ export default function DropPage() {
   const [categories, setCategories] = useState<string[]>(['Kaos / Katun', 'Denim']);
   const [activeOrder, setActiveOrder] = useState<DropOrder | null>(null);
 
-  const selectedPoint = MOCK_DROP_POINTS.find(p => p.id === selectedPointId) || MOCK_DROP_POINTS[0];
+  useEffect(() => {
+    fetchDropPoints().then(data => {
+      setPointsList(data);
+      if (data.length > 0) {
+        setSelectedPointId(data[0].id);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (userProfile) {
+      if (userProfile.full_name) setDonorName(userProfile.full_name);
+      if (userProfile.phone) setDonorPhone(userProfile.phone);
+    }
+  }, [userProfile]);
+
+  const selectedPoint = pointsList.find(p => p.id === selectedPointId) || pointsList[0];
   const { waterSaved, co2Saved, points } = calculateEcoImpact(weight);
 
   const cities = ['Semua', 'Jakarta Selatan', 'Jakarta Pusat', 'Bandung', 'Surabaya', 'Bali', 'Yogyakarta'];
-  const filteredPoints = cityFilter === 'Semua' ? MOCK_DROP_POINTS : MOCK_DROP_POINTS.filter(p => p.city.includes(cityFilter));
+  const filteredPoints = cityFilter === 'Semua' ? pointsList : pointsList.filter(p => p.city.includes(cityFilter));
 
   const garmentOptions = ['Kaos / Katun', 'Denim', 'Kemeja', 'Jaket / Outer', 'Kain Perca', 'Sprei & Handuk'];
 
@@ -38,13 +70,13 @@ export default function DropPage() {
     const order: DropOrder = {
       id: Math.random().toString(36).slice(2),
       bookingCode,
-      userId: 'usr-1',
-      userName: donorName || 'Anonim',
-      userPhone: donorPhone,
+      userId: currentUser?.id || 'usr-guest',
+      userName: donorName || userProfile?.full_name || 'Anonim',
+      userPhone: donorPhone || userProfile?.phone || '',
       userAddress: method === 'PICKUP' ? pickupAddress : undefined,
       method,
-      dropPointId: method === 'DROPOFF' ? selectedPoint.id : undefined,
-      dropPointName: method === 'DROPOFF' ? selectedPoint.name : undefined,
+      dropPointId: method === 'DROPOFF' && selectedPoint ? selectedPoint.id : undefined,
+      dropPointName: method === 'DROPOFF' && selectedPoint ? selectedPoint.name : undefined,
       courierService: method === 'PICKUP' ? 'Gojek / Grab Instant' : undefined,
       estimatedWeightKg: weight,
       itemCount,
@@ -71,7 +103,7 @@ export default function DropPage() {
             Selamatkan pakaianmu dari landfill.
           </h1>
           <p style={{ fontFamily: "'DM Sans', sans-serif", color: 'var(--sage-light)', fontSize: '1rem', marginTop: '1rem', maxWidth: '28rem', lineHeight: 1.7, fontWeight: 300 }}>
-            Antar ke drop-box terdekat atau minta penjemputan kurir. Setiap helai tercatat transparan dengan QR digital.
+            Antar ke drop-box terdekat atau minta penjemputan kurir. Pantau titik kumpul via OpenStreetMap interaktif.
           </p>
         </div>
       </div>
@@ -120,12 +152,51 @@ export default function DropPage() {
               </div>
             </div>
 
-            {/* Drop Point Selector */}
+            {/* Drop Point Selector with OpenStreetMap */}
             {method === 'DROPOFF' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="label-caps">2. Pilih Titik Drop</span>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)' }}>{filteredPoints.length} titik aktif</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('map')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        padding: '0.25rem 0.625rem',
+                        background: viewMode === 'map' ? 'var(--forest)' : 'transparent',
+                        color: viewMode === 'map' ? '#fff' : 'var(--ink-muted)',
+                        border: '1px solid var(--line)',
+                        fontSize: '0.6875rem',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <MapIcon size={12} /> Map
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('list')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        padding: '0.25rem 0.625rem',
+                        background: viewMode === 'list' ? 'var(--forest)' : 'transparent',
+                        color: viewMode === 'list' ? '#fff' : 'var(--ink-muted)',
+                        border: '1px solid var(--line)',
+                        fontSize: '0.6875rem',
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <List size={12} /> List
+                    </button>
+                  </div>
                 </div>
 
                 {/* City pills */}
@@ -138,31 +209,43 @@ export default function DropPage() {
                   ))}
                 </div>
 
-                {/* Drop Point List */}
-                <div style={{ maxHeight: '16rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--line)' }}>
-                  {filteredPoints.map((pt, i) => (
-                    <button key={pt.id} type="button" onClick={() => setSelectedPointId(pt.id)}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '1rem 0',
-                        borderBottom: '1px solid var(--line)',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        opacity: selectedPointId === pt.id ? 1 : 0.7,
-                      }}>
-                      <div>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--ink-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{pt.city} · {pt.category}</p>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 500, color: selectedPointId === pt.id ? 'var(--forest)' : 'var(--ink)' }}>{pt.name}</p>
-                      </div>
-                      {selectedPointId === pt.id && (
-                        <CheckCircle2 size={16} strokeWidth={1.5} style={{ color: 'var(--sage)', flexShrink: 0 }} />
-                      )}
-                    </button>
-                  ))}
-                </div>
+                {/* OpenStreetMap Interactive View */}
+                {viewMode === 'map' ? (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <DropPointMap
+                      points={filteredPoints}
+                      selectedPointId={selectedPointId}
+                      onSelectPoint={(id) => setSelectedPointId(id)}
+                      height="320px"
+                    />
+                  </div>
+                ) : (
+                  /* Drop Point List View */
+                  <div style={{ maxHeight: '18rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--line)' }}>
+                    {filteredPoints.map((pt) => (
+                      <button key={pt.id} type="button" onClick={() => setSelectedPointId(pt.id)}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '1rem 0',
+                          borderBottom: '1px solid var(--line)',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          opacity: selectedPointId === pt.id ? 1 : 0.7,
+                        }}>
+                        <div>
+                          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--ink-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{pt.city} · {pt.category}</p>
+                          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 500, color: selectedPointId === pt.id ? 'var(--forest)' : 'var(--ink)' }}>{pt.name}</p>
+                        </div>
+                        {selectedPointId === pt.id && (
+                          <CheckCircle2 size={16} strokeWidth={1.5} style={{ color: 'var(--sage)', flexShrink: 0 }} />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -256,10 +339,10 @@ export default function DropPage() {
             </div>
 
             {/* Selected Drop Point Card */}
-            {method === 'DROPOFF' && (
+            {method === 'DROPOFF' && selectedPoint && (
               <div style={{ border: '1px solid var(--line)' }}>
                 <div style={{ position: 'relative', height: '10rem', background: 'var(--cream-deep)', overflow: 'hidden' }}>
-                  <Image src={selectedPoint.image} alt={selectedPoint.name} fill className="object-cover" sizes="35vw" />
+                  <Image src={selectedPoint.image || '/hero-portrait.jpg'} alt={selectedPoint.name} fill className="object-cover" sizes="35vw" />
                 </div>
                 <div style={{ padding: '1.25rem' }}>
                   <span className="label-caps" style={{ display: 'block', marginBottom: '0.375rem' }}>{selectedPoint.category}</span>

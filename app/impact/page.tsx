@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Award, Droplets, Wind, Leaf, ArrowRight, Gift, Trophy, Share2, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Award, Droplets, Wind, Leaf, Gift, Trophy, Share2 } from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { formatNumber } from '@/lib/utils';
-import { MOCK_REWARD_VOUCHERS, NATIONAL_IMPACT_METRICS } from '@/lib/constants';
+import { NATIONAL_IMPACT_METRICS } from '@/lib/constants';
+import { fetchRewardVouchers } from '@/lib/supabase/data';
+import { RewardVoucher } from '@/lib/types';
 
 const LEVEL_TIERS = [
   { name: 'Eco Seedling', minPts: 0, maxPts: 499, color: 'var(--sage-light)', accent: 'var(--sage)', icon: '🌱' },
@@ -15,20 +17,25 @@ const LEVEL_TIERS = [
 ];
 
 export default function ImpactPage() {
-  const { userPoints: clothPoints, dropOrders, addNotification } = useApp();
+  const { userPoints: clothPoints, userTotalWaterSaved, userTotalCo2Saved, userTotalKgDiverted, dropOrders, addNotification } = useApp();
   const [activeCert, setActiveCert] = useState(false);
+  const [vouchers, setVouchers] = useState<RewardVoucher[]>([]);
 
-  const totalWeight = dropOrders.reduce((a, o) => a + o.estimatedWeightKg, 0);
-  const totalWater = dropOrders.reduce((a, o) => a + o.waterSavedLiters, 0);
-  const totalCo2 = dropOrders.reduce((a, o) => a + o.co2SavedKg, 0);
-  const totalItems = dropOrders.reduce((a, o) => a + o.itemCount, 0);
+  useEffect(() => {
+    fetchRewardVouchers().then(setVouchers);
+  }, []);
+
+  const totalWeight = dropOrders.reduce((a, o) => a + o.estimatedWeightKg, 0) || userTotalKgDiverted;
+  const totalWater = dropOrders.reduce((a, o) => a + o.waterSavedLiters, 0) || userTotalWaterSaved;
+  const totalCo2 = dropOrders.reduce((a, o) => a + o.co2SavedKg, 0) || userTotalCo2Saved;
+  const totalItems = dropOrders.reduce((a, o) => a + o.itemCount, 0) || Math.round(totalWeight * 2.5);
 
   const tier = LEVEL_TIERS.findLast(t => clothPoints >= t.minPts) || LEVEL_TIERS[0];
   const nextTier = LEVEL_TIERS.find(t => t.minPts > clothPoints);
   const progressPct = nextTier ? Math.round(((clothPoints - tier.minPts) / (nextTier.minPts - tier.minPts)) * 100) : 100;
 
-  const handleRedeem = (name: string, cost: number) => {
-    addNotification('success', 'Voucher diklaim!', `${name} akan dikirim ke WhatsApp dalam 5 menit.`);
+  const handleRedeem = (title: string, cost: number) => {
+    addNotification('success', 'Voucher diklaim!', `${title} akan dikirim ke WhatsApp dalam 5 menit.`);
   };
 
   return (
@@ -77,11 +84,11 @@ export default function ImpactPage() {
           {/* Each stat fills a full row */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
             {[
-              { icon: <Droplets size={20} strokeWidth={1.25} style={{ color: 'var(--sage)' }} />, label: 'Air bersih terhemat', value: totalWater > 0 ? formatNumber(Math.round(totalWater)) : '0', unit: 'Liter', sub: `Dari ${dropOrders.length} donasi aktifmu` },
+              { icon: <Droplets size={20} strokeWidth={1.25} style={{ color: 'var(--sage)' }} />, label: 'Air bersih terhemat', value: totalWater > 0 ? formatNumber(Math.round(totalWater)) : '0', unit: 'Liter', sub: `Dari kontribusi aktifmu` },
               { icon: <Wind size={20} strokeWidth={1.25} style={{ color: 'var(--sage)' }} />, label: 'Emisi CO₂ dicegah', value: totalCo2 > 0 ? totalCo2.toFixed(1) : '0', unit: 'kg CO₂e', sub: `${totalWeight} kg tekstil diselamatkan` },
               { icon: <Leaf size={20} strokeWidth={1.25} style={{ color: 'var(--sage)' }} />, label: 'Pakaian diberikan kehidupan baru', value: totalItems > 0 ? String(totalItems) : '0', unit: 'Helai', sub: 'Melalui donasi dan preloved' },
               { icon: <Award size={20} strokeWidth={1.25} style={{ color: 'var(--golden)' }} />, label: 'ClothPoints terkumpul', value: formatNumber(clothPoints), unit: 'Poin', sub: 'Tukar dengan reward di bawah ini' },
-            ].map((s, i) => (
+            ].map((s) => (
               <div key={s.label} style={{ display: 'flex', alignItems: 'baseline', gap: '2rem', padding: '1.75rem 0', borderBottom: '1px solid var(--line)' }}>
                 <div style={{ width: '10rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                   {s.icon}
@@ -148,7 +155,7 @@ export default function ImpactPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <span className="label-caps">Tukar Voucher & Reward</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-              {MOCK_REWARD_VOUCHERS.map((voucher, i) => {
+              {vouchers.map((voucher) => {
                 const canRedeem = clothPoints >= voucher.pointsCost;
                 return (
                   <div

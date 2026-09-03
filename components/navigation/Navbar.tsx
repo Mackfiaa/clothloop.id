@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/lib/store';
-import { ShoppingBag, Recycle, Menu, X } from 'lucide-react';
+import { formatNumber } from '@/lib/utils';
+import { ShoppingBag, Recycle, Menu, X, User as UserIcon, LogOut, Sparkles } from 'lucide-react';
 
 const navLinks = [
   { href: '/drop', label: 'ClothDrop' },
@@ -15,11 +16,13 @@ const navLinks = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { cart, setIsCartOpen } = useApp();
+  const { cart, setIsCartOpen, currentUser, userProfile, userPoints, signOut } = useApp();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   const totalItems = cart.reduce((a, c) => a + c.quantity, 0);
+  const displayName = userProfile?.full_name || currentUser?.email?.split('@')[0] || 'Member';
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 32);
@@ -94,7 +97,144 @@ export function Navbar() {
             </nav>
 
             {/* Right Actions */}
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+
+              {/* User Auth Section */}
+              {currentUser ? (
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      background: 'none',
+                      border: '1px solid var(--line)',
+                      padding: '0.3125rem 0.75rem',
+                      cursor: 'pointer',
+                      color: 'var(--ink)',
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <span style={{
+                      width: '1.25rem',
+                      height: '1.25rem',
+                      borderRadius: '9999px',
+                      background: 'var(--forest)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.625rem',
+                      fontWeight: 700,
+                    }}>
+                      {displayName.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="hidden sm:inline" style={{ maxWidth: '7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {displayName}
+                    </span>
+                    <span style={{ background: 'var(--golden-light)', color: 'var(--golden)', padding: '0.125rem 0.375rem', fontSize: '0.625rem', fontWeight: 700 }}>
+                      {formatNumber(userPoints)} pts
+                    </span>
+                  </button>
+
+                  {userDropdownOpen && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: '0.5rem',
+                      width: '13rem',
+                      background: 'var(--white)',
+                      border: '1px solid var(--line)',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                      zIndex: 60,
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}>
+                      <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--line)', background: 'var(--cream)' }}>
+                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink)' }}>{displayName}</p>
+                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--ink-muted)', marginTop: '0.125rem' }}>{currentUser.email}</p>
+                      </div>
+
+                      <Link
+                        href="/impact"
+                        onClick={() => setUserDropdownOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.625rem',
+                          padding: '0.75rem 1rem',
+                          textDecoration: 'none',
+                          color: 'var(--ink)',
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: '0.8125rem',
+                          borderBottom: '1px solid var(--line)',
+                        }}
+                      >
+                        <Sparkles size={14} style={{ color: 'var(--golden)' }} />
+                        <span>Eco Impact & Saldo Poin</span>
+                      </Link>
+
+                      <button
+                        onClick={async () => {
+                          setUserDropdownOpen(false);
+                          await signOut();
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.625rem',
+                          padding: '0.75rem 1rem',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--terracotta)',
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: '0.8125rem',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <LogOut size={14} />
+                        <span>Keluar Akun</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }} className="hidden sm:flex">
+                  <Link
+                    href="/auth/login"
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: '0.8125rem',
+                      color: 'var(--ink)',
+                      textDecoration: 'none',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Masuk
+                  </Link>
+                  <Link
+                    href="/auth/register"
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      color: 'var(--forest)',
+                      padding: '0.375rem 0.875rem',
+                      border: '1px solid var(--forest)',
+                      textDecoration: 'none',
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Daftar
+                  </Link>
+                </div>
+              )}
 
               {/* Cart */}
               <button
@@ -135,16 +275,7 @@ export function Navbar() {
                 )}
               </button>
 
-              {/* CTA — hidden mobile */}
-              <Link
-                href="/drop"
-                className="btn-primary"
-                style={{ padding: '0.5rem 1.25rem', fontSize: '0.75rem', display: 'none' }}
-                // show on md
-              >
-                <Recycle size={13} />
-                Drop Baju
-              </Link>
+              {/* CTA — Drop Baju */}
               <Link href="/drop" className="hidden md:flex btn-primary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.75rem' }}>
                 <Recycle size={13} />
                 Drop Baju
@@ -170,6 +301,46 @@ export function Navbar() {
             padding: '1.5rem',
           }} className="md:hidden">
             <nav style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+              {/* User status on mobile */}
+              <div style={{ paddingBottom: '1rem', marginBottom: '1rem', borderBottom: '1px solid var(--line)' }}>
+                {currentUser ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.125rem', color: 'var(--ink)' }}>{displayName}</p>
+                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--golden)', fontWeight: 600 }}>{formatNumber(userPoints)} ClothPoints</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setMobileOpen(false);
+                        await signOut();
+                      }}
+                      style={{ background: 'none', border: 'none', color: 'var(--terracotta)', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', cursor: 'pointer' }}
+                    >
+                      Keluar
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <Link
+                      href="/auth/login"
+                      onClick={() => setMobileOpen(false)}
+                      className="btn-secondary"
+                      style={{ flex: 1, justifyContent: 'center', fontSize: '0.75rem' }}
+                    >
+                      Masuk
+                    </Link>
+                    <Link
+                      href="/auth/register"
+                      onClick={() => setMobileOpen(false)}
+                      className="btn-primary"
+                      style={{ flex: 1, justifyContent: 'center', fontSize: '0.75rem' }}
+                    >
+                      Daftar
+                    </Link>
+                  </div>
+                )}
+              </div>
+
               {navLinks.map((l, i) => (
                 <Link
                   key={l.href}
