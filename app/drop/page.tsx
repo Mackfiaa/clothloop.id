@@ -3,11 +3,26 @@
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { Recycle, MapPin, Clock, Phone, QrCode, CheckCircle2, Truck, Store, ArrowRight, Map as MapIcon, List } from 'lucide-react';
+import { 
+  Recycle, 
+  MapPin, 
+  Truck, 
+  Store, 
+  ArrowRight, 
+  Map as MapIcon, 
+  List, 
+  Droplets, 
+  Wind, 
+  Calendar, 
+  Search,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
 import { DropMethod, DropOrder, DropPoint } from '@/lib/types';
 import { calculateEcoImpact, formatNumber, generateBookingCode } from '@/lib/utils';
 import { useApp } from '@/lib/store';
 import { fetchDropPoints } from '@/lib/supabase/data';
+import { CardSlideshow, SlideItem } from '@/components/ui/CardSlideshow';
 
 // Dynamically import OpenStreetMap component to prevent SSR hydration errors
 const DropPointMap = dynamic(
@@ -15,12 +30,42 @@ const DropPointMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div style={{ height: '320px', background: 'var(--cream-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem' }}>
+      <div style={{ height: '320px', background: 'var(--surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem' }}>
         Memuat OpenStreetMap...
       </div>
     ),
   }
 );
+
+const DROP_GALLERY_SLIDES: SlideItem[] = [
+  {
+    id: 'dp-1',
+    image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80',
+    tag: 'Mitra Kafe',
+    title: 'Anomali Coffee Senopati',
+    subtitle: 'Kotak serah mandiri di area depan kafe',
+  },
+  {
+    id: 'dp-2',
+    image: 'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?auto=format&fit=crop&w=800&q=80',
+    tag: 'Pusat Perbelanjaan',
+    title: 'Grand Indonesia West Mall',
+    subtitle: 'Drop Box Lantai 2 area lift lobby',
+  },
+  {
+    id: 'dp-3',
+    image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80',
+    tag: 'Bank Sampah',
+    title: 'Nyampah Baik Bandung',
+    subtitle: 'Timbangan digital terintegrasi sistem poin',
+  },
+];
+
+const TIME_SLOTS = [
+  '09:00 - 12:00 (Pagi)',
+  '13:00 - 16:00 (Siang)',
+  '16:00 - 19:00 (Sore)',
+];
 
 export default function DropPage() {
   const { addDropOrder, dropOrders, currentUser, userProfile } = useApp();
@@ -29,21 +74,25 @@ export default function DropPage() {
   const [method, setMethod] = useState<DropMethod>('DROPOFF');
   const [selectedPointId, setSelectedPointId] = useState<string>('');
   const [cityFilter, setCityFilter] = useState('Semua');
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('map');
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [weight, setWeight] = useState(3.5);
   const [itemCount, setItemCount] = useState(8);
   const [donorName, setDonorName] = useState('');
   const [donorPhone, setDonorPhone] = useState('');
   const [pickupAddress, setPickupAddress] = useState('');
+  const [scheduledDate, setScheduledDate] = useState('Hari Ini');
+  const [scheduledSlot, setScheduledSlot] = useState(TIME_SLOTS[0]);
   const [categories, setCategories] = useState<string[]>(['Kaos / Katun', 'Denim']);
   const [activeOrder, setActiveOrder] = useState<DropOrder | null>(null);
+
+  // Status lookup state
+  const [lookupCode, setLookupCode] = useState('');
+  const [lookupResult, setLookupResult] = useState<DropOrder | null | 'NOT_FOUND'>(null);
 
   useEffect(() => {
     fetchDropPoints().then(data => {
       setPointsList(data);
-      if (data.length > 0) {
-        setSelectedPointId(data[0].id);
-      }
+      if (data.length > 0) setSelectedPointId(data[0].id);
     });
   }, []);
 
@@ -59,7 +108,6 @@ export default function DropPage() {
 
   const cities = ['Semua', 'Jakarta Selatan', 'Jakarta Pusat', 'Bandung', 'Surabaya', 'Bali', 'Yogyakarta'];
   const filteredPoints = cityFilter === 'Semua' ? pointsList : pointsList.filter(p => p.city.includes(cityFilter));
-
   const garmentOptions = ['Kaos / Katun', 'Denim', 'Kemeja', 'Jaket / Outer', 'Kain Perca', 'Sprei & Handuk'];
 
   const toggleCat = (c: string) => setCategories(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
@@ -71,7 +119,7 @@ export default function DropPage() {
       id: Math.random().toString(36).slice(2),
       bookingCode,
       userId: currentUser?.id || 'usr-guest',
-      userName: donorName || userProfile?.full_name || 'Anonim',
+      userName: donorName || userProfile?.full_name || 'Donatur ClothLoop',
       userPhone: donorPhone || userProfile?.phone || '',
       userAddress: method === 'PICKUP' ? pickupAddress : undefined,
       method,
@@ -92,59 +140,95 @@ export default function DropPage() {
     setActiveOrder(order);
   };
 
+  const handleLookup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lookupCode) return;
+    const found = dropOrders.find(o => o.bookingCode.toLowerCase() === lookupCode.trim().toLowerCase());
+    setLookupResult(found || 'NOT_FOUND');
+  };
+
   return (
-    <div>
+    <div className="overflow-x-hidden">
 
       {/* Header */}
-      <div style={{ background: 'var(--forest)', padding: '4rem 0 3rem' }}>
-        <div className="container-editorial">
-          <span className="label-caps" style={{ color: 'var(--sage-light)' }}>ClothDrop Hub</span>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2.25rem, 5vw, 4rem)', color: '#fff', marginTop: '0.75rem', lineHeight: 1.08, maxWidth: '30rem' }}>
-            Selamatkan pakaianmu dari landfill.
-          </h1>
-          <p style={{ fontFamily: "'DM Sans', sans-serif", color: 'var(--sage-light)', fontSize: '1rem', marginTop: '1rem', maxWidth: '28rem', lineHeight: 1.7, fontWeight: 300 }}>
-            Antar ke drop-box terdekat atau minta penjemputan kurir. Pantau titik kumpul via OpenStreetMap interaktif.
-          </p>
+      <div className="bg-[var(--forest-deep)] py-10 sm:py-12 text-white">
+        <div className="container-site">
+          <span className="label-eyebrow text-white/70 block mb-1">ClothDrop Portal</span>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+            <div>
+              <h1 style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl sm:text-4xl font-bold text-white leading-tight">
+                Penyerahan & Donasi Pakaian
+              </h1>
+              <p className="text-xs sm:text-sm text-white/70 mt-1 max-w-lg leading-relaxed">
+                Antar pakaian ke titik rekanan atau gunakan layanan penjemputan. Dapatkan +100 poin reward per kilogram pakaian.
+              </p>
+            </div>
+            
+            {/* Status Lookup */}
+            <form onSubmit={handleLookup} className="flex gap-1.5 w-full md:w-auto bg-white/10 p-1.5 border border-white/20">
+              <input
+                value={lookupCode}
+                onChange={e => setLookupCode(e.target.value)}
+                placeholder="Cek status (CLD-XXXX)"
+                className="bg-transparent border-none text-white text-xs px-2 focus:outline-none placeholder-white/50 w-full md:w-44 font-mono"
+              />
+              <button type="submit" className="btn-primary text-[10px] py-1 px-3 bg-white text-[var(--forest-deep)] font-semibold border-none cursor-pointer">
+                <Search size={12} /> Cek
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 
-      <div className="container-editorial" style={{ paddingTop: '3.5rem', paddingBottom: '5rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'start' }}>
+      {/* Lookup Result Banner */}
+      {lookupResult && (
+        <div className="bg-[var(--surface-muted)] border-b border-[var(--border-hairline)] py-3">
+          <div className="container-site flex justify-between items-center text-xs">
+            {lookupResult === 'NOT_FOUND' ? (
+              <div className="flex items-center gap-2 text-red-700">
+                <AlertCircle size={15} />
+                <span>Kode <strong>{lookupCode}</strong> tidak ditemukan dalam sistem.</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-[var(--forest-deep)]">
+                <CheckCircle size={15} />
+                <span>Kode <strong>{lookupResult.bookingCode}</strong>: Status <strong>{lookupResult.status}</strong> ({lookupResult.estimatedWeightKg} kg &middot; +{lookupResult.pointsAwarded} Poin)</span>
+              </div>
+            )}
+            <button onClick={() => setLookupResult(null)} className="text-[var(--ink-muted)] hover:text-black text-xs font-semibold cursor-pointer">Tutup</button>
+          </div>
+        </div>
+      )}
 
-          {/* Left: Form */}
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+      <div className="container-site py-8 sm:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+          {/* Form Column (7 cols) */}
+          <form onSubmit={handleSubmit} className="lg:col-span-7 bg-white p-6 sm:p-8 border border-[var(--border-hairline)] flex flex-col gap-6">
 
             {/* Step 1: Method */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <span className="label-caps">1. Pilih Metode</span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <span className="label-eyebrow block mb-2">1. Metode Serah Terima</span>
+              <div className="grid grid-cols-2 gap-3">
                 {[
-                  { id: 'DROPOFF', icon: Store, label: 'Antar Mandiri', sub: 'Drop ke titik terdekat' },
-                  { id: 'PICKUP', icon: Truck, label: 'Jemput Kurir', sub: 'Penjemputan dari rumah' },
+                  { id: 'DROPOFF', icon: Store, title: 'Antar Mandiri', desc: 'Serahkan ke kotak rekanan terdekat' },
+                  { id: 'PICKUP', icon: Truck, title: 'Jemput Kurir', desc: 'Penjemputan langsung dari rumah' },
                 ].map(opt => {
                   const Icon = opt.icon;
-                  const active = method === opt.id;
+                  const isSelected = method === opt.id;
                   return (
                     <button
                       key={opt.id}
                       type="button"
                       onClick={() => setMethod(opt.id as DropMethod)}
-                      style={{
-                        padding: '1.25rem',
-                        border: active ? '1px solid var(--forest)' : '1px solid var(--line)',
-                        background: active ? 'var(--sage-faint)' : 'transparent',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.75rem',
-                        textAlign: 'left',
-                        transition: 'all 0.2s',
-                      }}
+                      className={`p-3.5 text-left border transition-colors cursor-pointer flex flex-col gap-1.5 ${
+                        isSelected ? 'bg-[var(--forest-subtle)] border-[var(--forest-deep)]' : 'bg-white border-[var(--border-hairline)] hover:border-gray-400'
+                      }`}
                     >
-                      <Icon size={18} strokeWidth={1.5} style={{ color: active ? 'var(--forest)' : 'var(--ink-muted)' }} />
+                      <Icon size={16} className={isSelected ? 'text-[var(--forest-deep)]' : 'text-gray-400'} />
                       <div>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: '0.875rem', color: active ? 'var(--forest)' : 'var(--ink)' }}>{opt.label}</p>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)', marginTop: '0.125rem' }}>{opt.sub}</p>
+                        <p className={`font-semibold text-xs ${isSelected ? 'text-[var(--forest-deep)]' : 'text-[var(--ink-primary)]'}`}>{opt.title}</p>
+                        <p className="text-[10px] text-[var(--ink-muted)]">{opt.desc}</p>
                       </div>
                     </button>
                   );
@@ -152,295 +236,249 @@ export default function DropPage() {
               </div>
             </div>
 
-            {/* Drop Point Selector with OpenStreetMap */}
-            {method === 'DROPOFF' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="label-caps">2. Pilih Titik Drop</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {/* Step 2: Location Map or Address */}
+            {method === 'DROPOFF' ? (
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="label-eyebrow">2. Lokasi Drop Point ({filteredPoints.length} Titik)</span>
+                  <div className="flex gap-1">
                     <button
                       type="button"
                       onClick={() => setViewMode('map')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        padding: '0.25rem 0.625rem',
-                        background: viewMode === 'map' ? 'var(--forest)' : 'transparent',
-                        color: viewMode === 'map' ? '#fff' : 'var(--ink-muted)',
-                        border: '1px solid var(--line)',
-                        fontSize: '0.6875rem',
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
+                      className={`text-[10px] font-semibold px-2 py-1 border flex items-center gap-1 cursor-pointer ${viewMode === 'map' ? 'bg-[var(--forest-deep)] text-white border-[var(--forest-deep)]' : 'bg-white text-gray-600 border-[var(--border-hairline)]'}`}
                     >
-                      <MapIcon size={12} /> Map
+                      <MapIcon size={11} /> Peta
                     </button>
                     <button
                       type="button"
                       onClick={() => setViewMode('list')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        padding: '0.25rem 0.625rem',
-                        background: viewMode === 'list' ? 'var(--forest)' : 'transparent',
-                        color: viewMode === 'list' ? '#fff' : 'var(--ink-muted)',
-                        border: '1px solid var(--line)',
-                        fontSize: '0.6875rem',
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
+                      className={`text-[10px] font-semibold px-2 py-1 border flex items-center gap-1 cursor-pointer ${viewMode === 'list' ? 'bg-[var(--forest-deep)] text-white border-[var(--forest-deep)]' : 'bg-white text-gray-600 border-[var(--border-hairline)]'}`}
                     >
-                      <List size={12} /> List
+                      <List size={11} /> Daftar
                     </button>
                   </div>
                 </div>
 
-                {/* City pills */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {/* City filters */}
+                <div className="flex gap-1.5 scroll-touch-x pb-2">
                   {cities.map(c => (
-                    <button key={c} type="button" onClick={() => setCityFilter(c)}
-                      style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', fontWeight: 500, padding: '0.375rem 0.875rem', border: cityFilter === c ? '1px solid var(--forest)' : '1px solid var(--line)', background: cityFilter === c ? 'var(--forest)' : 'transparent', color: cityFilter === c ? '#fff' : 'var(--ink-muted)', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCityFilter(c)}
+                      className={`text-[10px] px-2.5 py-1 border whitespace-nowrap cursor-pointer ${cityFilter === c ? 'bg-[var(--forest-deep)] text-white border-[var(--forest-deep)]' : 'bg-transparent text-[var(--ink-muted)] border-[var(--border-hairline)]'}`}
+                    >
                       {c}
                     </button>
                   ))}
                 </div>
 
-                {/* OpenStreetMap Interactive View */}
                 {viewMode === 'map' ? (
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <DropPointMap
-                      points={filteredPoints}
-                      selectedPointId={selectedPointId}
-                      onSelectPoint={(id) => setSelectedPointId(id)}
-                      height="320px"
-                    />
-                  </div>
+                  <DropPointMap
+                    points={filteredPoints}
+                    selectedPointId={selectedPointId}
+                    onSelectPoint={id => setSelectedPointId(id)}
+                    height="260px"
+                  />
                 ) : (
-                  /* Drop Point List View */
-                  <div style={{ maxHeight: '18rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--line)' }}>
-                    {filteredPoints.map((pt) => (
-                      <button key={pt.id} type="button" onClick={() => setSelectedPointId(pt.id)}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '1rem 0',
-                          borderBottom: '1px solid var(--line)',
-                          background: 'transparent',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          opacity: selectedPointId === pt.id ? 1 : 0.7,
-                        }}>
+                  <div className="max-h-52 overflow-y-auto border border-[var(--border-hairline)] divide-y divide-[var(--border-hairline)]">
+                    {filteredPoints.map(pt => (
+                      <button
+                        key={pt.id}
+                        type="button"
+                        onClick={() => setSelectedPointId(pt.id)}
+                        className={`p-2.5 text-left w-full flex justify-between items-center transition-colors cursor-pointer ${selectedPointId === pt.id ? 'bg-[var(--forest-subtle)]' : 'hover:bg-gray-50'}`}
+                      >
                         <div>
-                          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--ink-muted)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{pt.city} · {pt.category}</p>
-                          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 500, color: selectedPointId === pt.id ? 'var(--forest)' : 'var(--ink)' }}>{pt.name}</p>
+                          <span className="text-[9px] text-[var(--ink-muted)] uppercase tracking-wider block font-semibold">{pt.city} &middot; {pt.category}</span>
+                          <span className="text-xs font-semibold text-[var(--ink-primary)]">{pt.name}</span>
                         </div>
-                        {selectedPointId === pt.id && (
-                          <CheckCircle2 size={16} strokeWidth={1.5} style={{ color: 'var(--sage)', flexShrink: 0 }} />
-                        )}
+                        {selectedPointId === pt.id && <span className="text-[10px] font-bold text-[var(--forest-deep)]">Terpilih</span>}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Pickup Address */}
-            {method === 'PICKUP' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <span className="label-caps">2. Alamat Penjemputan</span>
+            ) : (
+              <div>
+                <span className="label-eyebrow block mb-1">2. Alamat Lengkap Penjemputan</span>
                 <textarea
                   value={pickupAddress}
                   onChange={e => setPickupAddress(e.target.value)}
-                  placeholder="Jl. Kemang Raya No. 15, Jakarta Selatan..."
-                  rows={3}
-                  style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--line-strong)', padding: '0.5rem 0', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink)', outline: 'none', resize: 'none' }}
+                  placeholder="Nama jalan, nomor rumah, RT/RW, kelurahan, patokan..."
+                  rows={2}
+                  required
+                  className="input-minimal text-xs"
                 />
               </div>
             )}
 
-            {/* Weight & Count */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <span className="label-caps">3. Estimasi Pakaian</span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                {[
-                  { label: 'Berat (kg)', value: weight, setter: (v: number) => setWeight(v), step: 0.5, min: 0.5, max: 50 },
-                  { label: 'Jumlah (helai)', value: itemCount, setter: (v: number) => setItemCount(v), step: 1, min: 1, max: 200 },
-                ].map(field => (
-                  <div key={field.label}>
-                    <span className="label-caps" style={{ fontSize: '0.625rem', display: 'block', marginBottom: '0.5rem' }}>{field.label}</span>
-                    <input
-                      type="number"
-                      value={field.value}
-                      step={field.step}
-                      min={field.min}
-                      max={field.max}
-                      onChange={e => field.setter(Number(e.target.value))}
-                      className="input-underline"
-                      style={{ fontSize: '1.5rem', fontFamily: "'Playfair Display', serif", fontWeight: 700 }}
-                    />
+            {/* Step 3: Date & Slot Picker */}
+            <div>
+              <span className="label-eyebrow block mb-2">3. Jadwal Waktu Serah Terima</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <span className="text-[10px] text-gray-500 uppercase block mb-1">Hari:</span>
+                  <div className="flex gap-1">
+                    {['Hari Ini', 'Besok', 'Lusa'].map(d => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setScheduledDate(d)}
+                        className={`text-xs flex-1 py-1.5 border font-medium cursor-pointer ${scheduledDate === d ? 'bg-[var(--forest-deep)] text-white border-[var(--forest-deep)]' : 'bg-transparent text-[var(--ink-primary)] border-[var(--border-hairline)]'}`}
+                      >
+                        {d}
+                      </button>
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-gray-500 uppercase block mb-1">Slot Jam:</span>
+                  <select
+                    value={scheduledSlot}
+                    onChange={e => setScheduledSlot(e.target.value)}
+                    className="w-full bg-white border border-[var(--border-hairline)] text-xs p-1.5 font-medium text-[var(--ink-primary)] focus:outline-none"
+                  >
+                    {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 4: Garments & Contact */}
+            <div className="flex flex-col gap-3">
+              <span className="label-eyebrow">4. Estimasi Pakaian & Kontak</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[10px] text-gray-500 uppercase block">Perkiraan Berat (kg)</span>
+                  <input
+                    type="number"
+                    value={weight}
+                    step={0.5}
+                    min={0.5}
+                    max={50}
+                    onChange={e => setWeight(Number(e.target.value))}
+                    className="input-minimal text-lg font-bold"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-500 uppercase block">Jumlah Helai</span>
+                  <input
+                    type="number"
+                    value={itemCount}
+                    step={1}
+                    min={1}
+                    max={200}
+                    onChange={e => setItemCount(Number(e.target.value))}
+                    className="input-minimal text-lg font-bold"
+                  />
+                </div>
               </div>
 
-              {/* Categories */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <div className="flex flex-wrap gap-1">
                 {garmentOptions.map(g => (
-                  <button key={g} type="button" onClick={() => toggleCat(g)}
-                    style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', padding: '0.375rem 0.875rem', border: categories.includes(g) ? '1px solid var(--forest)' : '1px solid var(--line)', background: categories.includes(g) ? 'var(--forest)' : 'transparent', color: categories.includes(g) ? '#fff' : 'var(--ink-muted)', cursor: 'pointer', transition: 'all 0.2s' }}>
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => toggleCat(g)}
+                    className={`text-[10px] px-2 py-1 border cursor-pointer ${categories.includes(g) ? 'bg-[var(--forest-deep)] text-white border-[var(--forest-deep)]' : 'bg-transparent text-gray-600 border-[var(--border-hairline)]'}`}
+                  >
                     {categories.includes(g) ? '✓ ' : ''}{g}
                   </button>
                 ))}
               </div>
-            </div>
 
-            {/* Identity */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <span className="label-caps">4. Data Donatur</span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                <div>
-                  <span className="label-caps" style={{ fontSize: '0.625rem', display: 'block', marginBottom: '0.5rem' }}>Nama</span>
-                  <input value={donorName} onChange={e => setDonorName(e.target.value)} placeholder="Nama lengkap" className="input-underline" />
-                </div>
-                <div>
-                  <span className="label-caps" style={{ fontSize: '0.625rem', display: 'block', marginBottom: '0.5rem' }}>WhatsApp</span>
-                  <input value={donorPhone} onChange={e => setDonorPhone(e.target.value)} placeholder="081xxxxxxxxx" className="input-underline" />
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <input
+                  value={donorName}
+                  onChange={e => setDonorName(e.target.value)}
+                  required
+                  placeholder="Nama Lengkap"
+                  className="input-minimal text-xs"
+                />
+                <input
+                  value={donorPhone}
+                  onChange={e => setDonorPhone(e.target.value)}
+                  required
+                  placeholder="Nomor WhatsApp"
+                  className="input-minimal text-xs"
+                />
               </div>
             </div>
 
-            <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
-              <QrCode size={15} />
-              Generate QR Label Digital
+            <button type="submit" className="btn-primary justify-center w-full mt-1">
+              Konfirmasi & Buat Tiket Booking
             </button>
           </form>
 
-          {/* Right: Sticky Impact Panel */}
-          <div style={{ position: 'sticky', top: '5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-
-            {/* Impact Numbers */}
-            <div style={{ borderTop: '3px solid var(--forest)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0' }}>
-              <span className="label-caps" style={{ marginBottom: '1.25rem' }}>Estimasi Dampak Booking Ini</span>
-              {[
-                { label: 'Air bersih terhemat', value: `${formatNumber(waterSaved)} L`, sub: `Dari ${weight} kg pakaian` },
-                { label: 'Emisi CO₂ dicegah', value: `${co2Saved} kg`, sub: 'CO₂ equivalent' },
-                { label: 'ClothPoints diterima', value: `+${points}`, sub: 'Masuk ke akunmu' },
-              ].map((s, i) => (
-                <div key={s.label} style={{ padding: '1.25rem 0', borderBottom: i < 2 ? '1px solid var(--line)' : 'none' }}>
-                  <span className="label-caps" style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.6rem' }}>{s.label}</span>
-                  <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '2.25rem', fontWeight: 700, color: 'var(--forest)', display: 'block', lineHeight: 1.1 }}>{s.value}</span>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-faint)' }}>{s.sub}</span>
-                </div>
-              ))}
+          {/* Right Column: Slideshow & Factual Summary (5 cols) */}
+          <div className="lg:col-span-5 flex flex-col gap-6">
+            <div>
+              <span className="label-eyebrow block mb-2">Dokumentasi Lokasi Drop Point</span>
+              <CardSlideshow
+                slides={DROP_GALLERY_SLIDES}
+                aspectRatio="aspect-[16/10]"
+                autoPlay={true}
+                interval={5000}
+              />
             </div>
 
-            {/* Selected Drop Point Card */}
-            {method === 'DROPOFF' && selectedPoint && (
-              <div style={{ border: '1px solid var(--line)' }}>
-                <div style={{ position: 'relative', height: '10rem', background: 'var(--cream-deep)', overflow: 'hidden' }}>
-                  <Image src={selectedPoint.image || '/hero-portrait.jpg'} alt={selectedPoint.name} fill className="object-cover" sizes="35vw" />
-                </div>
-                <div style={{ padding: '1.25rem' }}>
-                  <span className="label-caps" style={{ display: 'block', marginBottom: '0.375rem' }}>{selectedPoint.category}</span>
-                  <h4 style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: '0.9375rem', color: 'var(--ink)', marginBottom: '0.875rem', lineHeight: 1.4 }}>{selectedPoint.name}</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {[
-                      { icon: MapPin, text: selectedPoint.address },
-                      { icon: Clock, text: selectedPoint.operatingHours },
-                      { icon: Phone, text: selectedPoint.contactPhone },
-                    ].map(({ icon: Icon, text }) => (
-                      <div key={text} style={{ display: 'flex', gap: '0.625rem', alignItems: 'flex-start' }}>
-                        <Icon size={13} strokeWidth={1.5} style={{ color: 'var(--ink-muted)', marginTop: '0.125rem', flexShrink: 0 }} />
-                        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'var(--ink-muted)', lineHeight: 1.5 }}>{text}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+            <div className="bg-[var(--forest-deep)] text-white p-5 border border-[var(--forest-deep)]">
+              <span className="label-eyebrow text-white/70 block mb-2 text-[10px]">
+                Ringkasan Donasi ({weight} kg)
+              </span>
 
-            {/* Past Orders */}
-            {dropOrders.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                <span className="label-caps" style={{ marginBottom: '1rem' }}>Booking Aktif</span>
-                {dropOrders.slice(0, 3).map((ord, i) => (
-                  <button key={ord.id} type="button" onClick={() => setActiveOrder(ord)}
-                    style={{ display: 'flex', justifyContent: 'space-between', padding: '0.875rem 0', borderBottom: i < dropOrders.length - 1 ? '1px solid var(--line)' : 'none', cursor: 'pointer', textAlign: 'left', background: 'none', border: 'none', width: '100%' }}>
-                    <div>
-                      <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.75rem', color: 'var(--forest)', marginBottom: '0.125rem' }}>{ord.bookingCode}</p>
-                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)' }}>{ord.estimatedWeightKg} kg · {ord.itemCount} helai</p>
-                    </div>
-                    <ArrowRight size={14} strokeWidth={1.5} style={{ color: 'var(--ink-faint)', flexShrink: 0, marginTop: '0.25rem' }} />
-                  </button>
-                ))}
+              <div className="flex flex-col gap-2.5 text-xs">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-white/70">Air Bersih Terhemat:</span>
+                  <strong className="font-serif text-sm">{formatNumber(waterSaved)} L</strong>
+                </div>
+                <div className="flex justify-between items-baseline pt-2 border-t border-white/10">
+                  <span className="text-white/70">Emisi Karbon Dicegah:</span>
+                  <strong className="font-serif text-sm">{co2Saved} kg CO₂e</strong>
+                </div>
+                <div className="flex justify-between items-baseline pt-2 border-t border-white/10">
+                  <span className="text-white/70">Reward Poin:</span>
+                  <strong className="font-mono text-sm text-[var(--ochre-subtle)]">+{points} Poin</strong>
+                </div>
               </div>
-            )}
+            </div>
           </div>
+
         </div>
       </div>
 
-      {/* QR Modal */}
+      {/* Clean Industrial Receipt Modal (Zero AI Slop) */}
       {activeOrder && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(15,14,13,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setActiveOrder(null)}>
-          <div style={{ background: 'var(--white)', maxWidth: '28rem', width: '100%', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
-
-            <span className="label-caps" style={{ display: 'block', marginBottom: '1.5rem', color: 'var(--sage)' }}>Label QR Digital — Cetak & Tempel</span>
-
-            {/* QR Block */}
-            <div style={{ border: '1px solid var(--ink)', padding: '2rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', fontFamily: "'DM Mono', monospace" }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.125rem', fontWeight: 700, color: 'var(--forest)' }}>ClothLoop</span>
-                <span style={{ fontSize: '0.6875rem', color: 'var(--ink-muted)' }}>.id</span>
-              </div>
-
-              {/* Simulated QR Pattern */}
-              <div style={{ background: 'var(--ink)', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '3px', width: '8rem', height: '8rem' }}>
-                  {Array.from({ length: 64 }).map((_, i) => (
-                    <div key={i} style={{ background: ([0,1,7,8,14,15,56,57,63,32,33,34,9,13,24,25,30,31,40,45,50,55].includes(i)) ? '#fff' : 'transparent' }} />
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                  <span style={{ color: 'var(--ink-muted)' }}>Kode Booking</span>
-                  <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{activeOrder.bookingCode}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                  <span style={{ color: 'var(--ink-muted)' }}>Donatur</span>
-                  <span style={{ color: 'var(--ink)' }}>{activeOrder.userName}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                  <span style={{ color: 'var(--ink-muted)' }}>Estimasi</span>
-                  <span style={{ color: 'var(--ink)' }}>{activeOrder.estimatedWeightKg} kg · {activeOrder.itemCount} helai</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                  <span style={{ color: 'var(--ink-muted)' }}>Metode</span>
-                  <span style={{ color: 'var(--forest)', fontWeight: 600 }}>{activeOrder.method === 'DROPOFF' ? `Drop: ${activeOrder.dropPointName}` : 'Pickup Kurir'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--line)' }}>
-                  <span style={{ color: 'var(--ink-muted)' }}>Reward Estimasi</span>
-                  <span style={{ color: 'var(--sage)', fontWeight: 700 }}>+{activeOrder.pointsAwarded} ClothPoints</span>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setActiveOrder(null)}>
+          <div className="bg-white max-w-sm w-full p-6 border border-[var(--ink-primary)] shadow-lg flex flex-col gap-4 font-mono text-xs" onClick={e => e.stopPropagation()}>
+            
+            <div className="text-center pb-3 border-b border-dashed border-[var(--border-strong)]">
+              <span className="font-serif text-base font-bold tracking-tight block">CLOTHLOOP.ID</span>
+              <span className="text-[10px] text-gray-500 uppercase tracking-widest">BUKTI PENYERAHAN TEKSTIL</span>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button className="btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setActiveOrder(null)}>
-                <QrCode size={14} /> Simpan Label
-              </button>
-              <button className="btn-secondary" onClick={() => setActiveOrder(null)}>
-                Tutup
-              </button>
+            <div className="flex flex-col gap-1.5 text-[11px]">
+              <div className="flex justify-between"><span className="text-gray-500">Kode Booking:</span><strong>{activeOrder.bookingCode}</strong></div>
+              <div className="flex justify-between"><span className="text-gray-500">Donatur:</span><span>{activeOrder.userName}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Metode:</span><span>{activeOrder.method === 'DROPOFF' ? 'Antar Mandiri' : 'Jemput Kurir'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Jadwal:</span><span>{scheduledDate} ({scheduledSlot.split(' ')[0]})</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Estimasi Berat:</span><span>{activeOrder.estimatedWeightKg} kg ({activeOrder.itemCount} helai)</span></div>
+              <div className="flex justify-between pt-1 border-t border-[var(--border-hairline)]"><span className="text-gray-500">Reward Poin:</span><strong className="text-[var(--forest-deep)]">+{activeOrder.pointsAwarded} Poin</strong></div>
             </div>
+
+            <div className="text-[10px] text-gray-500 text-center italic border-t border-dashed border-[var(--border-strong)] pt-3">
+              Tunjukkan kode booking ini saat menyerahkan pakaian kepada petugas rekanan.
+            </div>
+
+            <button className="btn-primary justify-center text-xs py-2 w-full mt-1" onClick={() => setActiveOrder(null)}>
+              Tutup & Simpan Tiket
+            </button>
           </div>
         </div>
       )}
+
     </div>
   );
 }

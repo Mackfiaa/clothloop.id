@@ -4,82 +4,133 @@ import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, Recycle, ShoppingBag, Scissors, Award, MapPin, ChevronRight } from 'lucide-react';
+import { 
+  ArrowRight, 
+  Recycle, 
+  ShoppingBag, 
+  Scissors, 
+  Award, 
+  MapPin, 
+  Droplets, 
+  Wind, 
+  ArrowUpRight,
+  ShieldCheck,
+  CheckCircle2
+} from 'lucide-react';
 import { EcoCalculator } from '@/components/home/EcoCalculator';
+import { CardSlideshow, SlideItem } from '@/components/ui/CardSlideshow';
 import { ConditionBadge } from '@/components/ui/Badge';
 import { formatRupiah, formatNumber } from '@/lib/utils';
 import { useApp } from '@/lib/store';
 import { fetchMarketItems, fetchArtisans, fetchDropPoints } from '@/lib/supabase/data';
 import { MarketItem, ArtisanProfile, DropPoint } from '@/lib/types';
 
-// Dynamically import OpenStreetMap component to prevent SSR errors
+// Dynamically import OpenStreetMap component to prevent SSR hydration errors
 const DropPointMap = dynamic(
   () => import('@/components/map/DropPointMap').then((mod) => mod.DropPointMap),
   {
     ssr: false,
     loading: () => (
-      <div style={{ height: '360px', background: 'var(--cream-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem' }}>
+      <div style={{ height: '300px', background: 'var(--surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-muted)', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem' }}>
         Memuat OpenStreetMap...
       </div>
     ),
   }
 );
 
-const MARQUEE_STATS = [
-  { label: 'kg pakaian diselamatkan', value: '148,920' },
-  { label: 'liter air terhemat', value: '402 juta' },
-  { label: 'eco-citizens bergabung', value: '18,450+' },
-  { label: 'drop points aktif', value: '68' },
-  { label: 'artisan terverifikasi', value: '142' },
-  { label: 'kg CO₂ dicegah', value: '536,112' },
+const HERO_SLIDES: SlideItem[] = [
+  {
+    id: 'hs-1',
+    image: 'https://images.unsplash.com/photo-1551537482-f2075a1d41f2?auto=format&fit=crop&w=800&q=80',
+    tag: 'Craft Studio',
+    title: 'Sashiko Denim Kimono',
+    subtitle: 'Rework 2 denim usang oleh Studio BoroBoro',
+  },
+  {
+    id: 'hs-2',
+    image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80',
+    tag: 'Drop Hub',
+    title: 'Senopati Collection Point',
+    subtitle: 'Titik serah mandiri rekanan kafe Jaksel',
+  },
+  {
+    id: 'hs-3',
+    image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80',
+    tag: 'Preloved QC',
+    title: 'Upcycled Utility Bag',
+    subtitle: 'Material denim tebal terverifikasi kurasi',
+  },
 ];
 
-const pillars = [
+const LIFECYCLE_STEPS = [
+  {
+    id: 'step-1',
+    step: '01',
+    icon: Recycle,
+    title: 'Donasi & Kumpulkan',
+    desc: 'Serahkan pakaian tak terpakai ke 68+ titik rekanan atau panggil kurir penjemputan dari rumah.',
+    metric: '+100 poin per kg',
+  },
+  {
+    id: 'step-2',
+    step: '02',
+    icon: Scissors,
+    title: 'Kurasi & Rework Studio',
+    desc: 'Pakaian layak masuk katalog preloved, pakaian rusak dirombak oleh master perajin lokal.',
+    metric: 'Hemat 2.700L air / kg',
+  },
+  {
+    id: 'step-3',
+    step: '03',
+    icon: ShoppingBag,
+    title: 'Marketplace & Rewards',
+    desc: 'Belanja pakaian QC bergaransi escrow atau tukarkan poin dengan voucher mitra ramah bumi.',
+    metric: 'Proteksi escrow 100%',
+  },
+];
+
+const PILLARS = [
   {
     num: '01',
     icon: Recycle,
     title: 'ClothDrop',
-    sub: 'Donasi & Daur Ulang',
-    body: 'Titik kumpul di kota besar Indonesia. Antar mandiri atau kurir penjemputan — pakaian lamamu mendapat pelacakan QR real-time.',
+    sub: 'Donasi Tekstil',
+    body: 'Titik serah mandiri dan jemput kurir dengan pelacakan transparan.',
     href: '/drop',
-    bg: 'var(--sage-faint)',
   },
   {
     num: '02',
     icon: ShoppingBag,
     title: 'Preloved',
-    sub: 'Marketplace Terkurasi',
-    body: 'Setiap item melalui 12 tahap QC, panduan ukuran akurat, dan dilindungi Escrow. Belanja aman, tanpa tipu-tipu.',
+    sub: 'Marketplace QC',
+    body: 'Katalog pakaian bekas terkurasi dengan jaminan kondisi dan ukuran.',
     href: '/market',
-    bg: 'var(--cream-deep)',
   },
   {
     num: '03',
     icon: Scissors,
     title: 'ClothCraft',
-    sub: 'Upcycling & Rework Studio',
-    body: 'Hubungkan pakaian rusak dengan artisan spesialis Sashiko, Patchwork, dan Batik Rework. Karya unik, bukan sekadar tambal.',
+    sub: 'Studio Rework',
+    body: 'Layanan reparasi dan sulam tangan bersama perajin daur ulang.',
     href: '/craft',
-    bg: 'var(--terracotta-light)',
   },
   {
     num: '04',
     icon: Award,
     title: 'Eco Impact',
-    sub: 'Tracker & Rewards',
-    body: 'Pantau kontribusi nyata penyelamatan air dan CO₂. Kumpulkan ClothPoints — tukar dengan voucher, kopi, hingga adopsi pohon mangrove.',
+    sub: 'Audit Poin',
+    body: 'Catatan penghematan air, emisi, dan saldo poin reward.',
     href: '/impact',
-    bg: 'var(--golden-light)',
   },
 ];
 
 export default function HomePage() {
   const { addToCart } = useApp();
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
   const [artisans, setArtisans] = useState<ArtisanProfile[]>([]);
   const [dropPoints, setDropPoints] = useState<DropPoint[]>([]);
   const [selectedPointId, setSelectedPointId] = useState<string>('');
+  const [activeStepTab, setActiveStepTab] = useState(0);
 
   useEffect(() => {
     fetchMarketItems().then(setMarketItems);
@@ -91,340 +142,270 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div>
+    <div className="overflow-x-hidden">
 
-      {/* ── HERO ──────────────────────────────────────────── */}
-      <section style={{ background: 'var(--cream)', overflow: 'hidden' }}>
-        <div className="container-editorial" style={{ paddingTop: '4rem', paddingBottom: 0 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'end', minHeight: '88vh' }}>
+      {/* ── 1. HERO SECTION ───────────────────────────── */}
+      <section className="bg-[var(--surface-main)] border-b border-[var(--border-hairline)]">
+        <div className="container-site py-8 sm:py-14">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-center">
 
-            {/* Left: Editorial text */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '5rem' }}>
-              <span className="label-caps" style={{ color: 'var(--sage)' }}>
-                Platform Sirkular Fashion Indonesia
+            {/* Left Manifesto */}
+            <div className="lg:col-span-7 flex flex-col gap-4">
+              <span className="label-eyebrow text-[var(--forest-deep)]">
+                Inisiatif Sirkular Fashion Indonesia
               </span>
 
-              <h1 style={{
-                fontFamily: "'Playfair Display', serif",
-                fontSize: 'clamp(3rem, 6vw, 5.5rem)',
-                fontWeight: 700,
-                lineHeight: 1.04,
-                letterSpacing: '-0.02em',
-                color: 'var(--ink)',
-              }}>
-                Pakaian<br />
-                <em style={{ fontStyle: 'italic', color: 'var(--sage)' }}>lama</em> punya<br />
-                cerita baru.
+              <h1 style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl sm:text-4xl lg:text-5xl font-bold text-[var(--ink-primary)] leading-[1.1] tracking-tight">
+                Memperpanjang siklus hidup pakaian.
               </h1>
 
-              <p style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '1.0625rem',
-                color: 'var(--ink-muted)',
-                lineHeight: 1.75,
-                maxWidth: '28rem',
-                fontWeight: 300,
-              }}>
-                Donasikan, jual preloved, atau rework bersama artisan lokal. Satu ekosistem sirkular untuk mengurangi limbah tekstil — tanpa mengorbankan estetika.
+              <p className="text-xs sm:text-sm text-[var(--ink-secondary)] leading-relaxed max-w-lg font-normal">
+                ClothLoop menghubungkan donasi pakaian tak terpakai, kurasi preloved bergaransi, dan studio rekonstruksi tekstil untuk mengurangi beban sampah TPA.
               </p>
 
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-                <Link href="/drop" className="btn-primary">
-                  Mulai Drop Baju
-                  <ArrowRight size={15} />
+              <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+                <Link href="/drop" className="btn-primary justify-center text-xs py-2.5 px-4">
+                  <Recycle size={13} />
+                  Serahkan Pakaian
                 </Link>
-                <Link href="/market" className="btn-secondary">
-                  Jelajahi Preloved
+                <Link href="/market" className="btn-secondary justify-center text-xs py-2.5 px-4">
+                  Katalog Preloved
+                  <ArrowRight size={12} />
                 </Link>
               </div>
 
-              {/* Trust Strip */}
-              <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--line)' }}>
-                {[
-                  [`${dropPoints.length || 6}+`, 'Drop Points'],
-                  [`${artisans.length || 3}+`, 'Artisan Mitra'],
-                  ['18K+', 'Eco-Citizens'],
-                ].map(([v, l]) => (
-                  <div key={l} style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-                    <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.375rem', color: 'var(--forest)' }}>{v}</span>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)' }}>{l}</span>
-                  </div>
-                ))}
+              {/* Factual Statistics Strip */}
+              <div className="grid grid-cols-3 gap-3 pt-4 border-t border-[var(--border-hairline)] text-xs">
+                <div>
+                  <strong className="text-[var(--forest-deep)] font-serif text-base sm:text-lg block font-bold">148.9 T</strong>
+                  <span className="text-[10px] sm:text-xs text-[var(--ink-muted)]">Tekstil Dikelola</span>
+                </div>
+                <div>
+                  <strong className="text-[var(--forest-deep)] font-serif text-base sm:text-lg block font-bold">402M L</strong>
+                  <span className="text-[10px] sm:text-xs text-[var(--ink-muted)]">Air Dihemat</span>
+                </div>
+                <div>
+                  <strong className="text-[var(--forest-deep)] font-serif text-base sm:text-lg block font-bold">18.4K+</strong>
+                  <span className="text-[10px] sm:text-xs text-[var(--ink-muted)]">Anggota Terdaftar</span>
+                </div>
               </div>
             </div>
 
-            {/* Right: Tall editorial image — bleeds to bottom */}
-            <div style={{ position: 'relative', alignSelf: 'stretch', minHeight: '560px' }}>
-              <div style={{ position: 'absolute', inset: 0, background: 'var(--cream-deep)' }} />
-              <Image
-                src="/hero-portrait.jpg"
-                alt="Sustainable fashion editorial"
-                fill
-                className="object-cover object-top"
-                priority
-                sizes="50vw"
+            {/* Right Slideshow */}
+            <div className="lg:col-span-5">
+              <CardSlideshow
+                slides={HERO_SLIDES}
+                aspectRatio="aspect-[16/11] sm:aspect-[4/3]"
+                autoPlay={true}
+                interval={5000}
               />
-              {/* Floating eco tag */}
-              <div style={{
-                position: 'absolute',
-                bottom: '2.5rem',
-                left: '-1.5rem',
-                background: 'var(--white)',
-                padding: '1rem 1.375rem',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
-                zIndex: 10,
-              }}>
-                <span className="label-caps" style={{ display: 'block', color: 'var(--sage)', marginBottom: '0.25rem' }}>Dampak Pembelian Ini</span>
-                <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.125rem', fontWeight: 700, color: 'var(--ink)' }}>
-                  Hemat 10.800 Liter Air
-                </span>
-              </div>
             </div>
 
           </div>
         </div>
       </section>
 
-      {/* ── MARQUEE TICKER ──────────────────────────────── */}
-      <section style={{ background: 'var(--forest)', overflow: 'hidden', padding: '1rem 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ display: 'flex', gap: '4rem', animation: 'marqueeScroll 30s linear infinite', whiteSpace: 'nowrap', width: 'max-content' }}>
-          {[...MARQUEE_STATS, ...MARQUEE_STATS].map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-              <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.0625rem', color: '#fff' }}>{s.value}</span>
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--sage-light)', fontWeight: 400 }}>{s.label}</span>
-              <span style={{ color: 'var(--sage)', fontSize: '0.75rem', marginLeft: '1rem' }}>·</span>
-            </div>
-          ))}
-        </div>
-        <style>{`
-          @keyframes marqueeScroll {
-            from { transform: translateX(0); }
-            to   { transform: translateX(-50%); }
-          }
-        `}</style>
-      </section>
+      {/* ── 2. THREE-STEP LIFECYCLE ───────────────────── */}
+      <section className="bg-white py-8 sm:py-12 border-b border-[var(--border-hairline)]">
+        <div className="container-site">
 
-      {/* ── 4 PILLARS — BROKEN GRID ─────────────────────── */}
-      <section style={{ background: 'var(--cream)', paddingTop: '6rem', paddingBottom: '6rem' }}>
-        <div className="container-editorial">
-          <div style={{ marginBottom: '3rem' }}>
-            <span className="label-caps">Ekosistem Lengkap</span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 4vw, 3rem)', marginTop: '0.75rem', lineHeight: 1.1, maxWidth: '30rem' }}>
-              Satu platform, seluruh siklus hidup pakaian.
+          <div className="max-w-md mb-6">
+            <span className="label-eyebrow block mb-1">Alur Kerja Platform</span>
+            <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-xl sm:text-2xl font-bold text-[var(--ink-primary)]">
+              Satu ekosistem untuk siklus pakaian.
             </h2>
           </div>
 
-          {/* 2-row broken grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '1.5rem' }}>
-            {pillars.map((p, i) => {
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+            {LIFECYCLE_STEPS.map((s, idx) => {
+              const Icon = s.icon;
+              const isActive = activeStepTab === idx;
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => setActiveStepTab(idx)}
+                  className={`p-4 sm:p-5 border transition-colors cursor-pointer flex flex-col justify-between gap-3 ${
+                    isActive ? 'bg-[var(--surface-muted)] border-[var(--forest-deep)]' : 'bg-white border-[var(--border-hairline)] hover:border-gray-400'
+                  }`}
+                >
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-mono text-xs font-bold text-[var(--ink-muted)]">{s.step}</span>
+                      <Icon size={15} className="text-[var(--forest-deep)]" />
+                    </div>
+                    <h3 style={{ fontFamily: "'Playfair Display', serif" }} className="text-base font-bold text-[var(--ink-primary)] mb-1">
+                      {s.title}
+                    </h3>
+                    <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
+                      {s.desc}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-[var(--border-hairline)] text-[11px] font-semibold text-[var(--forest-deep)]">
+                    {s.metric}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── 3. FOUR PILLARS ───────────────────────────── */}
+      <section className="bg-[var(--surface-main)] py-8 sm:py-12">
+        <div className="container-site">
+
+          <div className="mb-6">
+            <span className="label-eyebrow">Navigasi Layanan</span>
+            <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-xl sm:text-2xl font-bold text-[var(--ink-primary)] mt-0.5">
+              Jelajahi fitur sirkular.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {PILLARS.map((p) => {
               const Icon = p.icon;
-              const spans = [5, 7, 7, 5];
               return (
                 <Link
                   key={p.num}
                   href={p.href}
-                  className="pillar-card"
-                  style={{
-                    gridColumn: `span ${spans[i]}`,
-                    background: p.bg,
-                    padding: '2.5rem',
-                    textDecoration: 'none',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1.5rem',
-                    minHeight: i % 2 === 0 ? '22rem' : '18rem',
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
+                  className="card-clean p-4 sm:p-5 flex flex-col justify-between gap-3 no-underline"
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span className="label-caps" style={{ color: 'var(--ink-muted)' }}>{p.num}</span>
-                    <Icon size={22} strokeWidth={1.25} style={{ color: 'var(--ink-secondary)' }} />
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-mono text-[var(--ink-muted)]">{p.num}</span>
+                      <Icon size={14} className="text-[var(--forest-deep)]" />
+                    </div>
+                    <span className="label-eyebrow block text-[10px] mb-0.5">{p.sub}</span>
+                    <h3 style={{ fontFamily: "'Playfair Display', serif" }} className="text-base font-bold text-[var(--ink-primary)] mb-1">
+                      {p.title}
+                    </h3>
+                    <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
+                      {p.body}
+                    </p>
                   </div>
-                  <div style={{ marginTop: 'auto' }}>
-                    <span className="label-caps" style={{ color: 'var(--ink-muted)', display: 'block', marginBottom: '0.5rem' }}>{p.sub}</span>
-                    <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.875rem', color: 'var(--ink)', lineHeight: 1.1, marginBottom: '0.875rem' }}>{p.title}</h3>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink-muted)', lineHeight: 1.7, maxWidth: '24rem' }}>{p.body}</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', fontWeight: 500, color: 'var(--ink)', textDecoration: 'underline', textUnderlineOffset: '3px' }}>Jelajahi</span>
-                    <ChevronRight size={14} style={{ color: 'var(--ink)' }} />
+
+                  <div className="flex items-center gap-1 text-[11px] font-semibold text-[var(--forest-deep)] pt-2 border-t border-[var(--border-hairline)]">
+                    Buka Halaman <ArrowRight size={10} />
                   </div>
                 </Link>
               );
             })}
           </div>
+
         </div>
       </section>
 
-      {/* ── ECO CALCULATOR ─────────────────────────────── */}
+      {/* ── 4. ECO CALCULATOR COMPONENT ───────────────── */}
       <EcoCalculator />
 
-      {/* ── HERO FLATLAY + PRELOVED DROPS ──────────────── */}
-      <section style={{ background: 'var(--cream)', paddingTop: '6rem', paddingBottom: '6rem' }}>
-        <div className="container-editorial">
+      {/* ── 5. CURATED PRELOVED ───────────────────────── */}
+      <section className="bg-[var(--surface-main)] py-8 sm:py-12">
+        <div className="container-site">
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
+          <div className="flex justify-between items-end mb-5">
             <div>
-              <span className="label-caps">Koleksi Terkurasi</span>
-              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', marginTop: '0.5rem', lineHeight: 1.1 }}>
-                Preloved pilihan minggu ini
+              <span className="label-eyebrow">Kurasi Preloved</span>
+              <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-xl sm:text-2xl font-bold text-[var(--ink-primary)] mt-0.5">
+                Katalog pilihan terverifikasi.
               </h2>
             </div>
-            <Link href="/market" className="hover-dim-sm" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'var(--ink-muted)', textDecoration: 'underline', textUnderlineOffset: '3px', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-              Lihat semua <ArrowRight size={13} />
+            <Link href="/market" className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-primary)] hover:text-[var(--forest-deep)] flex items-center gap-1">
+              Semua Produk <ArrowRight size={11} />
             </Link>
           </div>
 
-          {/* Editorial product grid: 1 large + 2 small */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '1.5rem' }}>
-
-            {/* Large card */}
-            {marketItems[0] && (() => {
-              const item = marketItems[0];
-              return (
-                <div
-                  key={item.id}
-                  style={{ gridColumn: 'span 5' }}
-                  onMouseEnter={() => setHoveredItem(item.id)}
-                  onMouseLeave={() => setHoveredItem(null)}
-                >
-                  <div style={{ position: 'relative', aspectRatio: '3/4', overflow: 'hidden', background: 'var(--cream-deep)' }} className="img-hover-zoom">
-                    <Image src={item.images[0] || '/hero-portrait.jpg'} alt={item.title} fill className="object-cover" sizes="42vw" />
-                    <div style={{ position: 'absolute', top: '1rem', left: '1rem' }}>
-                      <ConditionBadge condition={item.condition} />
-                    </div>
-                    {hoveredItem === item.id && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,14,13,0.35)', display: 'flex', alignItems: 'flex-end', padding: '1.5rem' }}>
-                        <button onClick={() => addToCart(item)} className="btn-primary" style={{ width: '100%', justifyContent: 'center', background: 'var(--white)', color: 'var(--ink)' }}>
-                          Tambah ke Keranjang
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ padding: '1rem 0' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.375rem' }}>
-                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)' }}>{item.brand} · {item.size}</p>
-                      <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, color: 'var(--ink)' }}>{formatRupiah(item.price)}</span>
-                    </div>
-                    <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: '0.9375rem', color: 'var(--ink)', lineHeight: 1.4 }}>{item.title}</h3>
-                    <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--sage)', marginTop: '0.375rem' }}>Hemat {formatNumber(item.waterSavedLiters)} L air</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            {marketItems.slice(0, 4).map((item) => (
+              <div key={item.id} className="card-clean p-2 sm:p-2.5 flex flex-col justify-between gap-1.5 group">
+                <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--surface-muted)]">
+                  <Image
+                    src={item.images[0] || '/hero-portrait.jpg'}
+                    alt={item.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 50vw, 25vw"
+                  />
+                  <div className="absolute top-1.5 left-1.5">
+                    <ConditionBadge condition={item.condition} />
                   </div>
                 </div>
-              );
-            })()}
 
-            {/* Right column: flatlay image + 2 smaller products stacked */}
-            <div style={{ gridColumn: 'span 7', display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto auto', gap: '1.5rem' }}>
+                <div className="flex flex-col gap-1 pt-1">
+                  <div className="flex justify-between text-[10px] text-[var(--ink-muted)]">
+                    <span className="truncate max-w-[65%]">{item.brand}</span>
+                    <span className="font-semibold text-[var(--ink-primary)]">{item.size}</span>
+                  </div>
 
-              {/* Flatlay editorial image */}
-              <div style={{ gridColumn: 'span 2', position: 'relative', aspectRatio: '16/7', overflow: 'hidden', background: 'var(--cream-deep)' }} className="img-hover-zoom">
-                <Image src="/hero-flatlay.jpg" alt="Sustainable fashion flatlay" fill className="object-cover" sizes="60vw" />
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', padding: '2rem', background: 'linear-gradient(to top, rgba(15,14,13,0.55) 0%, transparent 60%)' }}>
-                  <div>
-                    <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.375rem', fontStyle: 'italic', color: '#fff', display: 'block', lineHeight: 1.2 }}>
-                      "Pakaian yang merawat bumi,<br/>bukan membebaninya."
+                  <h4 className="font-semibold text-xs text-[var(--ink-primary)] line-clamp-1">
+                    {item.title}
+                  </h4>
+
+                  <div className="flex justify-between items-center pt-1 border-t border-[var(--border-hairline)] mt-0.5">
+                    <span style={{ fontFamily: "'Playfair Display', serif" }} className="font-bold text-xs sm:text-sm text-[var(--ink-primary)]">
+                      {formatRupiah(item.price)}
+                    </span>
+                    <span className="text-[9px] text-[var(--forest-deep)] font-semibold flex items-center gap-0.5">
+                      <Droplets size={9} /> {formatNumber(item.waterSavedLiters)} L
                     </span>
                   </div>
+
+                  <button
+                    onClick={() => addToCart(item)}
+                    className="btn-primary text-[10px] py-1 justify-center w-full mt-0.5"
+                  >
+                    + Keranjang
+                  </button>
                 </div>
               </div>
-
-              {/* Products row */}
-              {marketItems.slice(1, 3).map(item => (
-                <div
-                  key={item.id}
-                  onMouseEnter={() => setHoveredItem(item.id)}
-                  onMouseLeave={() => setHoveredItem(null)}
-                >
-                  <div style={{ position: 'relative', aspectRatio: '1/1', overflow: 'hidden', background: 'var(--cream-deep)' }} className="img-hover-zoom">
-                    <Image src={item.images[0] || '/hero-portrait.jpg'} alt={item.title} fill className="object-cover" sizes="30vw" />
-                    <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem' }}>
-                      <ConditionBadge condition={item.condition} />
-                    </div>
-                    {hoveredItem === item.id && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,14,13,0.35)', display: 'flex', alignItems: 'flex-end', padding: '1rem' }}>
-                        <button onClick={() => addToCart(item)} className="btn-primary" style={{ width: '100%', justifyContent: 'center', background: 'var(--white)', color: 'var(--ink)', padding: '0.625rem 1rem', fontSize: '0.75rem' }}>
-                          + Keranjang
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ padding: '0.75rem 0' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                      <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)' }}>{item.size}</p>
-                      <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '0.875rem', color: 'var(--ink)' }}>{formatRupiah(item.price)}</span>
-                    </div>
-                    <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', fontWeight: 500, color: 'var(--ink)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</h3>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── ARTISANS — FULL BLEED DARK ───────────────────── */}
-      <section style={{ background: 'var(--forest)', padding: '6rem 0' }}>
-        <div className="container-editorial">
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3rem' }}>
-            <div>
-              <span className="label-caps" style={{ color: 'var(--sage-light)' }}>ClothCraft Studio</span>
-              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', marginTop: '0.5rem', lineHeight: 1.1, color: '#ffffff' }}>
-                Karya tangan pengrajin<br /><em style={{ fontStyle: 'italic', color: 'var(--sage-light)' }}>daur ulang</em> Nusantara
-              </h2>
-            </div>
-            <Link href="/craft" className="hover-dim-sm" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'var(--sage-light)', textDecoration: 'underline', textUnderlineOffset: '3px', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-              Semua artisan <ArrowRight size={13} />
-            </Link>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2rem' }}>
-            {artisans.map(artisan => (
-              <Link key={artisan.id} href="/craft" className="artisan-card-link" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ position: 'relative', aspectRatio: '4/5', overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }} className="img-hover-zoom">
-                  <Image src={artisan.coverImage} alt={artisan.name} fill className="object-cover" sizes="30vw" />
-                </div>
-                <div>
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--sage-light)', marginBottom: '0.25rem' }}>{artisan.city} · {artisan.yearsOfExperience} tahun</p>
-                  <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.125rem', color: '#ffffff', marginBottom: '0.375rem' }}>{artisan.name}</h3>
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {artisan.specialty.join(' · ')}
-                  </p>
-                </div>
-              </Link>
             ))}
           </div>
+
         </div>
       </section>
 
-      {/* ── DROP POINT TEASER WITH OPENSTREETMAP ───────────── */}
-      <section style={{ background: 'var(--cream)', padding: '6rem 0', borderBottom: '1px solid var(--line)' }}>
-        <div className="container-editorial">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'start' }}>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <span className="label-caps">{dropPoints.length || 6}+ Titik Kumpul Nasional</span>
-              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', lineHeight: 1.1 }}>
-                Ada ClothDrop<br />
-                <em style={{ fontStyle: 'italic', color: 'var(--sage)' }}>di dekatmu.</em>
+      {/* ── 6. OPENSTREETMAP SECTION ──────────────────── */}
+      <section className="bg-white py-8 sm:py-12 border-t border-[var(--border-hairline)]">
+        <div className="container-site">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+            
+            <div className="lg:col-span-5 flex flex-col gap-3">
+              <span className="label-eyebrow">Jaringan Titik Kumpul</span>
+              <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-xl sm:text-2xl font-bold text-[var(--ink-primary)]">
+                Temukan ClothDrop terdekat.
               </h2>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.9375rem', color: 'var(--ink-muted)', lineHeight: 1.75, maxWidth: '26rem' }}>
-                Jakarta, Bandung, Surabaya, Bali, Yogyakarta — di kafe rekanan, mall, dan bank sampah digital terdekat. Buka peta OpenStreetMap untuk rute langsung.
+              <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
+                Antar pakaian ke kafe rekanan, pusat perbelanjaan, atau bank sampah digital di kota besar Indonesia.
               </p>
-              <Link href="/drop" className="btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
-                Cari & Booking Drop Point
-                <MapPin size={14} />
+
+              <div className="flex flex-col border border-[var(--border-hairline)] divide-y divide-[var(--border-hairline)] mt-1">
+                {dropPoints.slice(0, 3).map((pt) => (
+                  <button
+                    key={pt.id}
+                    onClick={() => setSelectedPointId(pt.id)}
+                    className="p-2.5 text-left bg-transparent border-none cursor-pointer flex justify-between items-center hover:bg-gray-50 transition-colors"
+                  >
+                    <div>
+                      <span className="text-[9px] text-[var(--ink-muted)] uppercase tracking-wider block font-semibold">{pt.city} &middot; {pt.category}</span>
+                      <span className="text-xs font-semibold text-[var(--ink-primary)]">{pt.name}</span>
+                    </div>
+                    <ArrowRight size={11} className="text-gray-400" />
+                  </button>
+                ))}
+              </div>
+
+              <Link href="/drop" className="btn-primary w-fit text-xs py-2 px-3 mt-1">
+                <MapPin size={12} /> Buka Peta Lengkap
               </Link>
             </div>
 
-            {/* Interactive OpenStreetMap on Homepage */}
-            <div>
+            <div className="lg:col-span-7">
               <DropPointMap
                 points={dropPoints}
                 selectedPointId={selectedPointId}
                 onSelectPoint={(id) => setSelectedPointId(id)}
-                height="340px"
+                height="280px"
               />
             </div>
 

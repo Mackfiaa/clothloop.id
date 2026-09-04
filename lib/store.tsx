@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { DropOrder, CartItem, UpcycleRequest, RewardVoucher, MarketItem } from './types';
+import { DropOrder, CartItem, UpcycleRequest, RewardVoucher, MarketItem, UserRole } from './types';
 import { createClient } from './supabase/client';
 import { User } from '@supabase/supabase-js';
 
@@ -17,6 +17,9 @@ export interface UserProfile {
   full_name: string;
   phone?: string;
   avatar_url?: string;
+  role: UserRole;
+  business_name?: string;
+  vehicle_type?: string;
   cloth_points: number;
   total_water_saved_liters: number;
   total_co2_saved_kg: number;

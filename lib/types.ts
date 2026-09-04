@@ -3,6 +3,14 @@ export type DropOrderStatus = 'PENDING' | 'RECEIVED' | 'SORTING' | 'COMPLETED';
 export type GarmentCondition = 'LIKE_NEW' | 'GENTLY_USED' | 'UPCYCLED' | 'VINTAGE';
 export type GarmentCategory = 'Semua' | 'Wanita' | 'Pria' | 'Denim & Jeans' | 'Outerwear' | 'Upcycled Bags' | 'Vintage';
 export type CraftServiceType = 'REPAIR' | 'REWORK' | 'CUSTOM_PATCHWORK' | 'UPCYCLE_BAG';
+export type UserRole = 'USER' | 'SELLER' | 'UMKM' | 'KURIR' | 'ADMIN';
+
+export interface UserRoleOption {
+  id: UserRole;
+  title: string;
+  subtitle: string;
+  badge: string;
+}
 
 export interface DropPoint {
   id: string;

@@ -2,7 +2,18 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { ShoppingBag, Search, SlidersHorizontal, Droplets, X, ArrowRight } from 'lucide-react';
+import { 
+  ShoppingBag, 
+  Search, 
+  SlidersHorizontal, 
+  Droplets, 
+  X, 
+  ArrowRight, 
+  Heart, 
+  ChevronLeft, 
+  ChevronRight,
+  ShieldCheck
+} from 'lucide-react';
 import { GarmentCategory, GarmentCondition, MarketItem } from '@/lib/types';
 import { formatRupiah, formatNumber } from '@/lib/utils';
 import { ConditionBadge } from '@/components/ui/Badge';
@@ -17,26 +28,66 @@ const CONDITIONS: { id: GarmentCondition | 'ALL'; label: string }[] = [
   { id: 'UPCYCLED', label: 'Upcycled' },
   { id: 'VINTAGE', label: 'Vintage' },
 ];
-const SIZES = ['Semua', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 export default function MarketPage() {
-  const { addToCart } = useApp();
+  const { addToCart, addNotification } = useApp();
   const [items, setItems] = useState<MarketItem[]>([]);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<GarmentCategory>('Semua');
   const [condition, setCondition] = useState<GarmentCondition | 'ALL'>('ALL');
   const [size, setSize] = useState('Semua');
   const [maxPrice, setMaxPrice] = useState(1500000);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
 
+  // Wishlist state
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [showWishlistOnly, setShowWishlistOnly] = useState(false);
+
+  // Per-card photo index tracker
+  const [cardPhotoIndexes, setCardPhotoIndexes] = useState<{ [id: string]: number }>({});
+
   useEffect(() => {
     fetchMarketItems().then(setItems);
+    const saved = localStorage.getItem('clothloop_wishlist');
+    if (saved) {
+      try { setWishlist(JSON.parse(saved)); } catch (e) {}
+    }
   }, []);
+
+  const toggleWishlist = (id: string, title: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    let updated: string[];
+    if (wishlist.includes(id)) {
+      updated = wishlist.filter(x => x !== id);
+      addNotification('info', 'Wishlist Diperbarui', `${title} dihapus dari daftar simpan.`);
+    } else {
+      updated = [...wishlist, id];
+      addNotification('success', 'Disimpan ke Wishlist', `${title} disimpan ke daftar favorit.`);
+    }
+    setWishlist(updated);
+    localStorage.setItem('clothloop_wishlist', JSON.stringify(updated));
+  };
+
+  const nextCardPhoto = (id: string, totalPhotos: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCardPhotoIndexes(prev => ({
+      ...prev,
+      [id]: ((prev[id] || 0) + 1) % totalPhotos,
+    }));
+  };
+
+  const prevCardPhoto = (id: string, totalPhotos: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCardPhotoIndexes(prev => ({
+      ...prev,
+      [id]: ((prev[id] || 0) - 1 + totalPhotos) % totalPhotos,
+    }));
+  };
 
   const filtered = useMemo(() => {
     return items.filter(item => {
+      if (showWishlistOnly && !wishlist.includes(item.id)) return false;
       if (query && !item.title.toLowerCase().includes(query.toLowerCase()) && !(item.brand ?? '').toLowerCase().includes(query.toLowerCase())) return false;
       if (category !== 'Semua' && item.category !== category) return false;
       if (condition !== 'ALL' && item.condition !== condition) return false;
@@ -44,209 +95,284 @@ export default function MarketPage() {
       if (item.price > maxPrice) return false;
       return true;
     });
-  }, [items, query, category, condition, size, maxPrice]);
+  }, [items, showWishlistOnly, wishlist, query, category, condition, size, maxPrice]);
 
   return (
-    <div>
+    <div className="overflow-x-hidden">
+
       {/* Header */}
-      <div style={{ background: 'var(--cream)', borderBottom: '1px solid var(--line)', padding: '3.5rem 0 2rem' }}>
-        <div className="container-editorial">
-          <span className="label-caps">Preloved Marketplace</span>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '0.75rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 4.5vw, 3.5rem)', lineHeight: 1.08, maxWidth: '28rem' }}>
-              Fashion sirkular,<br /><em style={{ fontStyle: 'italic', color: 'var(--sage)' }}>terkurasi cermat.</em>
-            </h1>
+      <div className="bg-[var(--surface-main)] border-b border-[var(--border-hairline)] py-10 sm:py-12">
+        <div className="container-site">
+          <span className="label-eyebrow block mb-1">Preloved Marketplace</span>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+            <div>
+              <h1 style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl sm:text-4xl font-bold text-[var(--ink-primary)] leading-tight">
+                Koleksi Terkurasi & Bergaransi
+              </h1>
+              <p className="text-xs sm:text-sm text-[var(--ink-muted)] mt-1">
+                Pakaian second-hand dengan 12-tahap inspeksi kondisi, panduan ukuran nyata, dan proteksi escrow.
+              </p>
+            </div>
+
             {/* Search */}
-            <div style={{ position: 'relative', width: '22rem', maxWidth: '100%' }}>
-              <Search size={15} strokeWidth={1.5} style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-faint)' }} />
+            <div className="relative w-full md:w-72">
+              <Search size={14} className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Cari brand, jenis, ukuran..."
-                style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--line-strong)', padding: '0.5rem 0 0.5rem 1.625rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink)', outline: 'none' }}
+                placeholder="Cari brand, model, ukuran..."
+                className="input-minimal text-xs pl-5"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container-editorial" style={{ paddingTop: '2.5rem', paddingBottom: '5rem' }}>
+      <div className="container-site py-6 sm:py-8">
 
         {/* Filter Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
-          {/* Category pills */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', flex: 1 }}>
+        <div className="flex items-center justify-between gap-3 mb-6 pb-3 border-b border-[var(--border-hairline)] flex-wrap">
+          
+          {/* Category Chips */}
+          <div className="flex gap-1.5 scroll-touch-x flex-1 pb-1">
             {CATEGORIES.map(c => (
-              <button key={c} onClick={() => setCategory(c)}
-                style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', fontWeight: 500, padding: '0.4rem 1rem', border: category === c ? '1px solid var(--ink)' : '1px solid var(--line)', background: category === c ? 'var(--ink)' : 'transparent', color: category === c ? '#fff' : 'var(--ink-muted)', cursor: 'pointer', transition: 'all 0.2s' }}>
+              <button
+                key={c}
+                onClick={() => setCategory(c)}
+                className={`text-xs px-3 py-1.5 border whitespace-nowrap font-medium transition-colors cursor-pointer ${
+                  category === c ? 'bg-[var(--ink-primary)] text-white border-[var(--ink-primary)]' : 'bg-transparent text-[var(--ink-secondary)] border-[var(--border-hairline)] hover:border-gray-400'
+                }`}
+              >
                 {c}
               </button>
             ))}
           </div>
-          <button onClick={() => setFilterOpen(!filterOpen)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: '1px solid var(--line)', padding: '0.4rem 1rem', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'var(--ink-muted)', transition: 'all 0.2s', flexShrink: 0 }}>
-            <SlidersHorizontal size={13} strokeWidth={1.5} /> Filter
-          </button>
-          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'var(--ink-faint)', flexShrink: 0 }}>{filtered.length} item</span>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Wishlist Toggle */}
+            <button
+              onClick={() => setShowWishlistOnly(!showWishlistOnly)}
+              className={`text-xs py-1.5 px-3 border flex items-center gap-1.5 font-medium transition-colors cursor-pointer ${
+                showWishlistOnly ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-[var(--ink-primary)] border-[var(--border-hairline)]'
+              }`}
+            >
+              <Heart size={13} className={showWishlistOnly ? 'fill-red-700' : ''} />
+              <span>Wishlist ({wishlist.length})</span>
+            </button>
+
+            <button
+              onClick={() => setFilterOpen(!filterOpen)}
+              className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1 cursor-pointer"
+            >
+              <SlidersHorizontal size={12} /> Filter
+            </button>
+            <span className="text-xs text-gray-400 font-mono">({filtered.length})</span>
+          </div>
         </div>
 
-        {/* Expanded Filters */}
+        {/* Filter Drawer */}
         {filterOpen && (
-          <div style={{ marginBottom: '2rem', padding: '1.5rem', border: '1px solid var(--line)', display: 'flex', flexWrap: 'wrap', gap: '2rem', background: 'var(--white)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <span className="label-caps">Kondisi</span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+          <div className="mb-6 p-4 bg-white border border-[var(--border-hairline)] grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div>
+              <span className="label-eyebrow block mb-1 text-[10px]">Kondisi Pakaian</span>
+              <div className="flex flex-wrap gap-1">
                 {CONDITIONS.map(c => (
-                  <button key={c.id} onClick={() => setCondition(c.id)}
-                    style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', padding: '0.375rem 0.875rem', border: condition === c.id ? '1px solid var(--forest)' : '1px solid var(--line)', background: condition === c.id ? 'var(--sage-faint)' : 'transparent', color: condition === c.id ? 'var(--forest)' : 'var(--ink-muted)', cursor: 'pointer' }}>
+                  <button
+                    key={c.id}
+                    onClick={() => setCondition(c.id)}
+                    className={`text-[11px] px-2 py-1 border cursor-pointer ${condition === c.id ? 'bg-[var(--forest-deep)] text-white border-[var(--forest-deep)]' : 'bg-transparent text-gray-600 border-[var(--border-hairline)]'}`}
+                  >
                     {c.label}
                   </button>
                 ))}
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <span className="label-caps">Ukuran</span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                {SIZES.map(s => (
-                  <button key={s} onClick={() => setSize(s)}
-                    style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', padding: '0.375rem 0.875rem', border: size === s ? '1px solid var(--ink)' : '1px solid var(--line)', background: size === s ? 'var(--ink)' : 'transparent', color: size === s ? '#fff' : 'var(--ink-muted)', cursor: 'pointer' }}>
+
+            <div>
+              <span className="label-eyebrow block mb-1 text-[10px]">Ukuran</span>
+              <div className="flex flex-wrap gap-1">
+                {['Semua', 'XS', 'S', 'M', 'L', 'XL'].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setSize(s)}
+                    className={`text-[11px] px-2 py-1 border cursor-pointer ${size === s ? 'bg-[var(--ink-primary)] text-white border-[var(--ink-primary)]' : 'bg-transparent text-gray-600 border-[var(--border-hairline)]'}`}
+                  >
                     {s}
                   </button>
                 ))}
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, minWidth: '16rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="label-caps">Harga maks.</span>
-                <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '0.9375rem', color: 'var(--ink)' }}>{formatRupiah(maxPrice)}</span>
+
+            <div>
+              <div className="flex justify-between items-baseline mb-1">
+                <span className="label-eyebrow text-[10px]">Batas Harga</span>
+                <span className="font-bold">{formatRupiah(maxPrice)}</span>
               </div>
-              <input type="range" min={50000} max={1500000} step={50000} value={maxPrice} onChange={e => setMaxPrice(Number(e.target.value))}
-                style={{ width: '100%', accentColor: 'var(--forest)', cursor: 'pointer' }} />
+              <input
+                type="range"
+                min={50000}
+                max={1500000}
+                step={50000}
+                value={maxPrice}
+                onChange={e => setMaxPrice(Number(e.target.value))}
+                className="w-full cursor-pointer"
+                style={{ accentColor: 'var(--forest-deep)' }}
+              />
             </div>
           </div>
         )}
 
-        {/* Masonry-style Grid */}
+        {/* Product Cards */}
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '5rem 0' }}>
-            <ShoppingBag size={36} strokeWidth={1} style={{ color: 'var(--ink-faint)', marginBottom: '1rem' }} />
-            <p style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', color: 'var(--ink)' }}>Tidak ada item yang cocok</p>
+          <div className="text-center py-16 bg-white border border-[var(--border-hairline)]">
+            <ShoppingBag size={28} className="text-gray-300 mx-auto mb-2" />
+            <p className="font-serif text-sm text-[var(--ink-primary)]">Tidak ada produk yang sesuai kriteria.</p>
           </div>
         ) : (
-          <div style={{ columns: '4 200px', gap: '1.5rem' }}>
-            {filtered.map((item, idx) => (
-              <div
-                key={item.id}
-                style={{ breakInside: 'avoid', marginBottom: '1.5rem', cursor: 'pointer' }}
-                onMouseEnter={() => setHoveredId(item.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                onClick={() => setSelectedItem(item)}
-              >
-                {/* Image */}
-                <div
-                  style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    background: 'var(--cream-deep)',
-                    aspectRatio: idx % 3 === 0 ? '3/4' : idx % 3 === 1 ? '1/1' : '4/5',
-                  }}
-                  className="img-hover-zoom"
-                >
-                  <Image src={item.images[0] || '/hero-portrait.jpg'} alt={item.title} fill className="object-cover" sizes="25vw" />
-                  <div style={{ position: 'absolute', top: '0.75rem', left: '0.75rem' }}>
-                    <ConditionBadge condition={item.condition} />
-                  </div>
-                  {hoveredId === item.id && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,14,13,0.28)', display: 'flex', alignItems: 'flex-end', padding: '1rem' }}>
-                      <button
-                        onClick={e => { e.stopPropagation(); addToCart(item); }}
-                        className="btn-primary"
-                        style={{ width: '100%', justifyContent: 'center', background: 'var(--white)', color: 'var(--ink)', padding: '0.625rem', fontSize: '0.75rem' }}
-                      >
-                        + Keranjang
-                      </button>
-                    </div>
-                  )}
-                </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {filtered.map(item => {
+              const photoIdx = cardPhotoIndexes[item.id] || 0;
+              const images = item.images.length > 0 ? item.images : ['/hero-portrait.jpg'];
+              const isWishlisted = wishlist.includes(item.id);
 
-                {/* Caption */}
-                <div style={{ padding: '0.75rem 0' }}>
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--ink-muted)', marginBottom: '0.25rem' }}>{item.brand} · {item.size}</p>
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', fontWeight: 500, color: 'var(--ink)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-                    <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, color: 'var(--ink)', fontSize: '1rem' }}>{formatRupiah(item.price)}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <Droplets size={11} strokeWidth={1.5} style={{ color: 'var(--sage)' }} />
-                      <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--sage)' }}>{formatNumber(item.waterSavedLiters)} L</span>
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => setSelectedItem(item)}
+                  className="card-clean p-2 sm:p-2.5 flex flex-col justify-between gap-2 group cursor-pointer"
+                >
+                  <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--surface-muted)]">
+                    <Image
+                      src={images[photoIdx] || images[0]}
+                      alt={item.title}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 640px) 50vw, 25vw"
+                    />
+
+                    <div className="absolute top-2 left-2 z-10">
+                      <ConditionBadge condition={item.condition} />
                     </div>
+
+                    <button
+                      onClick={(e) => toggleWishlist(item.id, item.title, e)}
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-gray-700 shadow-sm z-10 cursor-pointer"
+                    >
+                      <Heart size={12} className={isWishlisted ? 'fill-red-700 text-red-700' : ''} />
+                    </button>
+
+                    {images.length > 1 && (
+                      <div className="absolute inset-x-1 top-1/2 -translate-y-1/2 flex justify-between z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => prevCardPhoto(item.id, images.length, e)}
+                          className="w-5 h-5 bg-white/90 hover:bg-white flex items-center justify-center text-gray-800 shadow-sm cursor-pointer"
+                        >
+                          <ChevronLeft size={12} />
+                        </button>
+                        <button
+                          onClick={(e) => nextCardPhoto(item.id, images.length, e)}
+                          className="w-5 h-5 bg-white/90 hover:bg-white flex items-center justify-center text-gray-800 shadow-sm cursor-pointer"
+                        >
+                          <ChevronRight size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between text-[11px] text-[var(--ink-muted)]">
+                      <span className="truncate max-w-[65%]">{item.brand}</span>
+                      <span className="font-semibold text-[var(--ink-primary)]">{item.size}</span>
+                    </div>
+
+                    <h4 className="font-semibold text-xs text-[var(--ink-primary)] line-clamp-1">
+                      {item.title}
+                    </h4>
+
+                    <div className="flex justify-between items-center pt-1 border-t border-[var(--border-hairline)] mt-1">
+                      <span style={{ fontFamily: "'Playfair Display', serif" }} className="font-bold text-sm text-[var(--ink-primary)]">
+                        {formatRupiah(item.price)}
+                      </span>
+                      <span className="text-[10px] text-[var(--forest-deep)] font-semibold flex items-center gap-0.5">
+                        <Droplets size={10} /> {formatNumber(item.waterSavedLiters)} L
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={(e) => { e.stopPropagation(); addToCart(item); }}
+                      className="btn-primary text-[10px] py-1.5 justify-center w-full mt-1"
+                    >
+                      + Keranjang
+                    </button>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
+
       </div>
 
       {/* Product Detail Modal */}
       {selectedItem && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(15,14,13,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setSelectedItem(null)}>
-          <div style={{ background: 'var(--white)', maxWidth: '52rem', width: '100%', maxHeight: '90vh', overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr' }} onClick={e => e.stopPropagation()}>
-
-            {/* Image */}
-            <div style={{ position: 'relative', minHeight: '30rem' }} className="img-hover-zoom">
-              <Image src={selectedItem.images[0] || '/hero-portrait.jpg'} alt={selectedItem.title} fill className="object-cover" sizes="50vw" />
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" onClick={() => setSelectedItem(null)}>
+          <div className="bg-white max-w-3xl w-full max-h-[90vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 border border-[var(--border-hairline)] shadow-xl" onClick={e => e.stopPropagation()}>
+            
+            <div className="relative aspect-[4/5] md:aspect-auto md:min-h-[22rem] bg-[var(--surface-muted)]">
+              <Image
+                src={selectedItem.images[0] || '/hero-portrait.jpg'}
+                alt={selectedItem.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
             </div>
 
-            {/* Details */}
-            <div style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <button onClick={() => setSelectedItem(null)} style={{ alignSelf: 'flex-end', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-muted)' }}>
-                <X size={18} strokeWidth={1.5} />
-              </button>
-
+            <div className="p-6 flex flex-col justify-between gap-4">
               <div>
-                <ConditionBadge condition={selectedItem.condition} />
-                <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem', color: 'var(--ink)', marginTop: '0.875rem', lineHeight: 1.2 }}>{selectedItem.title}</h2>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink-muted)', marginTop: '0.375rem' }}>{selectedItem.brand}</p>
-              </div>
+                <div className="flex justify-between items-start mb-2">
+                  <ConditionBadge condition={selectedItem.condition} />
+                  <button onClick={() => setSelectedItem(null)} className="text-gray-400 hover:text-black cursor-pointer">
+                    <X size={18} />
+                  </button>
+                </div>
 
-              <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.875rem', fontWeight: 700, color: 'var(--ink)' }}>{formatRupiah(selectedItem.price)}</span>
+                <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-xl font-bold text-[var(--ink-primary)]">
+                  {selectedItem.title}
+                </h2>
+                <p className="text-xs text-[var(--ink-muted)] mt-0.5">{selectedItem.brand} &middot; Penjual: {selectedItem.sellerName}</p>
 
-              {/* Specs */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                {[
-                  ['Ukuran', selectedItem.size],
-                  ['Kategori', selectedItem.category],
-                  ['Material', selectedItem.material],
-                  ['Kondisi', selectedItem.condition.replace('_', ' ')],
-                  ['Kota Penjual', selectedItem.sellerCity],
-                ].map(([k, v]) => (
-                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.625rem 0', borderBottom: '1px solid var(--line)', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem' }}>
-                    <span style={{ color: 'var(--ink-muted)' }}>{k}</span>
-                    <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{v}</span>
+                <div className="mt-3">
+                  <span style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl font-bold text-[var(--ink-primary)]">
+                    {formatRupiah(selectedItem.price)}
+                  </span>
+                </div>
+
+                <div className="mt-4 p-3 bg-[var(--surface-muted)] border border-[var(--border-hairline)] text-xs flex flex-col gap-1">
+                  <span className="label-eyebrow text-[10px] block text-[var(--forest-deep)]">Dampak Sirkular Terverifikasi:</span>
+                  <div className="flex justify-between text-[var(--ink-secondary)]">
+                    <span>Konsumsi Air Terhemat:</span>
+                    <strong>{formatNumber(selectedItem.waterSavedLiters)} Liter</strong>
                   </div>
-                ))}
-              </div>
-
-              {/* Eco badge */}
-              <div style={{ background: 'var(--sage-faint)', padding: '0.875rem', display: 'flex', gap: '1.5rem' }}>
-                <div>
-                  <span className="label-caps" style={{ display: 'block', fontSize: '0.5625rem', marginBottom: '0.25rem' }}>Air terhemat</span>
-                  <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.125rem', color: 'var(--forest)' }}>{formatNumber(selectedItem.waterSavedLiters)} L</span>
-                </div>
-                <div>
-                  <span className="label-caps" style={{ display: 'block', fontSize: '0.5625rem', marginBottom: '0.25rem' }}>CO₂ dicegah</span>
-                  <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.125rem', color: 'var(--forest)' }}>{selectedItem.co2SavedKg} kg</span>
+                  <div className="flex justify-between text-[var(--ink-secondary)]">
+                    <span>Emisi Karbon Dicegah:</span>
+                    <strong>{selectedItem.co2SavedKg} kg CO₂e</strong>
+                  </div>
                 </div>
               </div>
 
-              <button onClick={() => { addToCart(selectedItem); setSelectedItem(null); }} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                Tambah ke Keranjang
-                <ArrowRight size={14} />
+              <button
+                onClick={() => { addToCart(selectedItem); setSelectedItem(null); }}
+                className="btn-primary w-full justify-center"
+              >
+                + Tambah ke Keranjang
               </button>
             </div>
+
           </div>
         </div>
       )}
+
     </div>
   );
 }

@@ -25,13 +25,14 @@ export function MobileNav() {
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 40,
-        background: 'var(--ink)',
+        background: '#191817',
+        border: '1px solid rgba(255,255,255,0.15)',
         borderRadius: '9999px',
-        padding: '0.5rem 1.25rem',
+        padding: '0.4rem 1rem',
         display: 'flex',
         alignItems: 'center',
         gap: '0.25rem',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
       }}
     >
       {links.map((l) => {
@@ -46,15 +47,15 @@ export function MobileNav() {
               flexDirection: 'column',
               alignItems: 'center',
               gap: '0.125rem',
-              padding: '0.375rem 0.75rem',
+              padding: '0.35rem 0.65rem',
               borderRadius: '9999px',
-              backgroundColor: active ? 'var(--sage)' : 'transparent',
-              color: active ? '#ffffff' : 'rgba(255,255,255,0.45)',
+              backgroundColor: active ? '#1b3628' : 'transparent',
+              color: active ? '#ffffff' : 'rgba(255,255,255,0.5)',
               textDecoration: 'none',
-              transition: 'background-color 0.2s, color 0.2s',
+              transition: 'background-color 0.15s, color 0.15s',
             }}
           >
-            <Icon size={16} strokeWidth={1.75} />
+            <Icon size={15} strokeWidth={1.75} />
             <span style={{
               fontFamily: "'DM Sans', sans-serif",
               fontSize: '0.5625rem',

@@ -1,19 +1,33 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Award, Droplets, Wind, Leaf, Gift, Trophy, Share2 } from 'lucide-react';
+import { 
+  Award, 
+  Droplets, 
+  Wind, 
+  Leaf, 
+  Trophy, 
+  MapPin, 
+  Share2 
+} from 'lucide-react';
 import { useApp } from '@/lib/store';
 import { formatNumber } from '@/lib/utils';
-import { NATIONAL_IMPACT_METRICS } from '@/lib/constants';
 import { fetchRewardVouchers } from '@/lib/supabase/data';
 import { RewardVoucher } from '@/lib/types';
 
 const LEVEL_TIERS = [
-  { name: 'Eco Seedling', minPts: 0, maxPts: 499, color: 'var(--sage-light)', accent: 'var(--sage)', icon: '🌱' },
-  { name: 'Green Weaver', minPts: 500, maxPts: 1999, color: 'var(--cream-deep)', accent: 'var(--sage)', icon: '🌿' },
-  { name: 'Circular Artisan', minPts: 2000, maxPts: 4999, color: 'var(--terracotta-light)', accent: 'var(--terracotta)', icon: '🧵' },
-  { name: 'Eco Guardian', minPts: 5000, maxPts: 9999, color: 'var(--golden-light)', accent: 'var(--golden)', icon: '🛡️' },
-  { name: 'Loop Legend', minPts: 10000, maxPts: Infinity, color: 'var(--forest)', accent: '#fff', icon: '♾️' },
+  { name: 'Eco Seedling', minPts: 0, maxPts: 499 },
+  { name: 'Green Weaver', minPts: 500, maxPts: 1999 },
+  { name: 'Circular Artisan', minPts: 2000, maxPts: 4999 },
+  { name: 'Eco Guardian', minPts: 5000, maxPts: 9999 },
+  { name: 'Loop Legend', minPts: 10000, maxPts: Infinity },
+];
+
+const COMMUNITY_LEADERBOARD = [
+  { rank: 1, name: 'Siti Rahmawati', city: 'Jakarta Selatan', totalKg: 48.5, waterSaved: 130950, title: 'Donatur Utama' },
+  { rank: 2, name: 'Budi Santoso', city: 'Bandung', totalKg: 36.2, waterSaved: 97740, title: 'Penggerak Komunitas' },
+  { rank: 3, name: 'Amanda Putri', city: 'Surabaya', totalKg: 29.0, waterSaved: 78300, title: 'Warga Sirkular' },
+  { rank: 4, name: 'Dimas Wicaksono', city: 'Bali', totalKg: 24.5, waterSaved: 66150, title: 'Warga Sirkular' },
 ];
 
 export default function ImpactPage() {
@@ -35,213 +49,211 @@ export default function ImpactPage() {
   const progressPct = nextTier ? Math.round(((clothPoints - tier.minPts) / (nextTier.minPts - tier.minPts)) * 100) : 100;
 
   const handleRedeem = (title: string, cost: number) => {
-    addNotification('success', 'Voucher diklaim!', `${title} akan dikirim ke WhatsApp dalam 5 menit.`);
+    addNotification('success', 'Voucher Berhasil Diklaim', `${title} telah aktif di akun Anda.`);
   };
 
   return (
-    <div>
+    <div className="overflow-x-hidden">
 
       {/* Header */}
-      <div style={{ background: 'var(--cream)', borderBottom: '1px solid var(--line)', padding: '3.5rem 0 3rem' }}>
-        <div className="container-editorial">
-          <span className="label-caps">Eco Impact Dashboard</span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', alignItems: 'end', marginTop: '0.75rem' }}>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 5vw, 3.75rem)', lineHeight: 1.08 }}>
-              Dampak nyata<br /><em style={{ fontStyle: 'italic', color: 'var(--sage)' }}>kontribusimu.</em>
-            </h1>
+      <div className="bg-[var(--surface-main)] border-b border-[var(--border-hairline)] py-10 sm:py-12">
+        <div className="container-site">
+          <span className="label-eyebrow block mb-1">Audit Dampak Pribadi</span>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+            <div>
+              <h1 style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl sm:text-4xl font-bold text-[var(--ink-primary)] leading-tight">
+                Portofolio Kontribusi Sirkular
+              </h1>
+              <p className="text-xs sm:text-sm text-[var(--ink-muted)] mt-1">
+                Catatan resmi pengalihan limbah tekstil dan penghematan sumber daya air.
+              </p>
+            </div>
 
-            {/* Level Badge */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', alignSelf: 'end' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span className="label-caps">Tingkat Sirkularitas</span>
-                {nextTier && (
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)' }}>
-                    {formatNumber(nextTier.minPts - clothPoints)} pts ke {nextTier.name}
-                  </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span style={{ fontSize: '2rem' }}>{tier.icon}</span>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.125rem', color: 'var(--ink)', marginBottom: '0.5rem' }}>{tier.name}</p>
-                  <div style={{ height: '3px', background: 'var(--line)', position: 'relative' }}>
-                    <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${progressPct}%`, background: 'var(--sage)', transition: 'width 0.5s ease' }} />
-                  </div>
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--ink-faint)', marginTop: '0.5rem' }}>{progressPct}% menuju level berikutnya</p>
-                </div>
+            {/* Level status */}
+            <div className="bg-white p-3.5 border border-[var(--border-hairline)] flex items-center gap-3 w-full md:w-auto">
+              <div>
+                <span className="label-eyebrow text-[9px] block">Level Partisipasi</span>
+                <strong className="text-xs text-[var(--forest-deep)] font-serif block">{tier.name}</strong>
+                <span className="text-[10px] text-gray-500 font-mono">{clothPoints} Poin</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container-editorial" style={{ paddingTop: '4rem', paddingBottom: '5rem', display: 'flex', flexDirection: 'column', gap: '5rem' }}>
+      <div className="container-site py-8 sm:py-10 flex flex-col gap-8">
 
-        {/* Big Impact Stats */}
-        <section>
-          <span className="label-caps" style={{ display: 'block', marginBottom: '2rem' }}>Kontribusi Pribadimu</span>
-
-          {/* Each stat fills a full row */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {[
-              { icon: <Droplets size={20} strokeWidth={1.25} style={{ color: 'var(--sage)' }} />, label: 'Air bersih terhemat', value: totalWater > 0 ? formatNumber(Math.round(totalWater)) : '0', unit: 'Liter', sub: `Dari kontribusi aktifmu` },
-              { icon: <Wind size={20} strokeWidth={1.25} style={{ color: 'var(--sage)' }} />, label: 'Emisi CO₂ dicegah', value: totalCo2 > 0 ? totalCo2.toFixed(1) : '0', unit: 'kg CO₂e', sub: `${totalWeight} kg tekstil diselamatkan` },
-              { icon: <Leaf size={20} strokeWidth={1.25} style={{ color: 'var(--sage)' }} />, label: 'Pakaian diberikan kehidupan baru', value: totalItems > 0 ? String(totalItems) : '0', unit: 'Helai', sub: 'Melalui donasi dan preloved' },
-              { icon: <Award size={20} strokeWidth={1.25} style={{ color: 'var(--golden)' }} />, label: 'ClothPoints terkumpul', value: formatNumber(clothPoints), unit: 'Poin', sub: 'Tukar dengan reward di bawah ini' },
-            ].map((s) => (
-              <div key={s.label} style={{ display: 'flex', alignItems: 'baseline', gap: '2rem', padding: '1.75rem 0', borderBottom: '1px solid var(--line)' }}>
-                <div style={{ width: '10rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                  {s.icon}
-                  <span className="label-caps" style={{ fontSize: '0.5625rem' }}>{s.label}</span>
-                </div>
-                <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2.5rem, 5vw, 5rem)', fontWeight: 700, color: 'var(--forest)', lineHeight: 1, flex: 1 }}>{s.value}</span>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink-muted)', width: '5rem', flexShrink: 0 }}>{s.unit}</span>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-faint)', display: 'none', width: '14rem', flexShrink: 0 }} className="md:block">{s.sub}</span>
-              </div>
-            ))}
+        {/* 1. Metric Cards */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="p-4 bg-white border border-[var(--border-hairline)] flex flex-col justify-between gap-2">
+            <span className="label-eyebrow text-[10px] text-[var(--forest-deep)] flex items-center gap-1">
+              <Droplets size={12} /> Air Bersih
+            </span>
+            <div>
+              <span style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl sm:text-3xl font-bold text-[var(--forest-deep)]">
+                {formatNumber(Math.round(totalWater))}
+              </span>
+              <span className="text-[10px] text-gray-500 block">Liter Terhemat</span>
+            </div>
           </div>
-        </section>
 
-        {/* National Impact */}
-        <section style={{ background: 'var(--forest)', padding: '3rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <div>
-            <span className="label-caps" style={{ color: 'var(--sage-light)' }}>Dampak Nasional Komunitas ClothLoop</span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', color: '#fff', marginTop: '0.5rem', lineHeight: 1.1 }}>
-              Bersama 18K+ eco-citizens
-            </h2>
+          <div className="p-4 bg-white border border-[var(--border-hairline)] flex flex-col justify-between gap-2">
+            <span className="label-eyebrow text-[10px] text-[var(--forest-deep)] flex items-center gap-1">
+              <Wind size={12} /> Emisi Karbon
+            </span>
+            <div>
+              <span style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl sm:text-3xl font-bold text-[var(--forest-deep)]">
+                {totalCo2.toFixed(1)}
+              </span>
+              <span className="text-[10px] text-gray-500 block">kg CO₂e Terhindar</span>
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '2rem' }}>
-            {[
-              { val: formatNumber(NATIONAL_IMPACT_METRICS.totalDivertedKg), unit: 'kg', label: 'Tekstil diselamatkan' },
-              { val: `${(NATIONAL_IMPACT_METRICS.totalWaterSavedLiters / 1_000_000).toFixed(0)}M`, unit: 'Liter', label: 'Air bersih terjaga' },
-              { val: formatNumber(NATIONAL_IMPACT_METRICS.totalCo2AvoidedKg), unit: 'kg', label: 'CO₂ dicegah' },
-              { val: formatNumber(NATIONAL_IMPACT_METRICS.activeDonors), unit: '+', label: 'Eco-citizens' },
-            ].map(s => (
-              <div key={s.label}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.375rem' }}>
-                  <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '2.5rem', color: '#fff', lineHeight: 1 }}>{s.val}</span>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--sage-light)' }}>{s.unit}</span>
-                </div>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'rgba(200,221,209,0.6)', marginTop: '0.375rem' }}>{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
 
-        {/* ClothPoints & Vouchers */}
-        <section style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '4rem', alignItems: 'start' }}>
-          <div>
-            <span className="label-caps" style={{ display: 'block', marginBottom: '1rem' }}>Saldo ClothPoints</span>
-            <div style={{ borderTop: '3px solid var(--golden)', paddingTop: '1.25rem' }}>
-              <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: 'clamp(3rem, 6vw, 5rem)', color: 'var(--golden)', lineHeight: 1, display: 'block' }}>
+          <div className="p-4 bg-white border border-[var(--border-hairline)] flex flex-col justify-between gap-2">
+            <span className="label-eyebrow text-[10px] text-[var(--forest-deep)] flex items-center gap-1">
+              <Leaf size={12} /> Pakaian
+            </span>
+            <div>
+              <span style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl sm:text-3xl font-bold text-[var(--forest-deep)]">
+                {totalItems}
+              </span>
+              <span className="text-[10px] text-gray-500 block">Helai Dialihkan</span>
+            </div>
+          </div>
+
+          <div className="p-4 bg-[var(--ochre-subtle)] border border-[rgba(140,109,45,0.2)] flex flex-col justify-between gap-2">
+            <span className="label-eyebrow text-[10px] text-[var(--ochre)] flex items-center gap-1">
+              <Award size={12} /> Poin Aktif
+            </span>
+            <div>
+              <span style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl sm:text-3xl font-bold text-[var(--ochre)]">
                 {formatNumber(clothPoints)}
               </span>
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.9375rem', color: 'var(--ink-muted)' }}>Poin tersedia</span>
-              <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {[
-                  ['1 kg donasi', '+100 poin'],
-                  ['Beli preloved', '+50 poin'],
-                  ['Request craft', '+75 poin'],
-                ].map(([act, pts]) => (
-                  <div key={act} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', padding: '0.5rem 0', borderBottom: '1px solid var(--line)' }}>
-                    <span style={{ color: 'var(--ink-muted)' }}>{act}</span>
-                    <span style={{ color: 'var(--golden)', fontWeight: 600 }}>{pts}</span>
+              <span className="text-[10px] text-gray-600 block">ClothPoints</span>
+            </div>
+          </div>
+        </section>
+
+        {/* 2. Community Leaderboard & Mangrove Adoption */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          {/* Community Leaderboard (7 cols) */}
+          <div className="lg:col-span-7 bg-white p-5 sm:p-6 border border-[var(--border-hairline)] flex flex-col justify-between gap-4">
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <span className="label-eyebrow">Peringkat Donasi Komunitas Bulan Ini</span>
+                <span className="text-[10px] text-gray-400 font-mono">Berdasarkan Total kg</span>
+              </div>
+
+              <div className="divide-y divide-[var(--border-hairline)]">
+                {COMMUNITY_LEADERBOARD.map(c => (
+                  <div key={c.rank} className="py-2.5 flex justify-between items-center text-xs">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold text-gray-400 w-4">{c.rank}</span>
+                      <div>
+                        <strong className="text-[var(--ink-primary)] block">{c.name}</strong>
+                        <span className="text-[10px] text-gray-400">{c.city} &middot; {c.title}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <strong className="text-[var(--forest-deep)]">{c.totalKg} kg</strong>
+                      <span className="text-[10px] text-gray-400 block">{formatNumber(c.waterSaved)} L air</span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
+
+            <p className="text-[10px] text-gray-500 pt-2 border-t border-[var(--border-hairline)]">
+              Peringkat diperbarui secara otomatis dari timbangan terverifikasi drop-point.
+            </p>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <span className="label-caps">Tukar Voucher & Reward</span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-              {vouchers.map((voucher) => {
-                const canRedeem = clothPoints >= voucher.pointsCost;
-                return (
-                  <div
-                    key={voucher.id}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 0', borderBottom: '1px solid var(--line)', gap: '1rem', flexWrap: 'wrap' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                      <span style={{ fontSize: '1.75rem', flexShrink: 0 }}>{voucher.logo}</span>
-                      <div>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: '0.875rem', color: 'var(--ink)', marginBottom: '0.25rem' }}>{voucher.title}</p>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)', lineHeight: 1.5 }}>{voucher.description}</p>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1rem', color: canRedeem ? 'var(--golden)' : 'var(--ink-faint)' }}>{formatNumber(voucher.pointsCost)} pts</p>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--ink-faint)' }}>s.d. {voucher.validUntil}</p>
-                      </div>
-                      <button
-                        onClick={() => handleRedeem(voucher.title, voucher.pointsCost)}
-                        disabled={!canRedeem}
-                        className="btn-primary"
-                        style={{ padding: '0.5rem 1.125rem', fontSize: '0.75rem', opacity: canRedeem ? 1 : 0.35, cursor: canRedeem ? 'pointer' : 'default' }}
-                      >
-                        <Gift size={13} />
-                        Klaim
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+          {/* Mangrove Tree Adoption Tracker (5 cols) */}
+          <div className="lg:col-span-5 bg-[var(--forest-deep)] text-white p-5 sm:p-6 border border-[var(--forest-deep)] flex flex-col justify-between gap-4">
+            <div>
+              <span className="label-eyebrow text-white/70 block mb-1 text-[10px]">Program Konservasi</span>
+              <h3 style={{ fontFamily: "'Playfair Display', serif" }} className="text-xl font-bold mb-1">
+                Adopsi Mangrove Pesisir
+              </h3>
+              <p className="text-xs text-white/70 leading-relaxed">
+                Tukarkan 400 poin reward untuk penanaman 1 bibit pohon mangrove di pesisir Muara Gembong bersama mitra konservasi.
+              </p>
+
+              <div className="bg-white/10 p-3 mt-4 text-xs flex flex-col gap-1 border border-white/10 font-mono">
+                <div className="flex justify-between text-white/80"><span>Lokasi:</span><span>Muara Gembong, Jawa Barat</span></div>
+                <div className="flex justify-between text-white/80"><span>Koordinat:</span><span>-5.9381° S, 107.0394° E</span></div>
+                <div className="flex justify-between text-white/80"><span>Penukaran:</span><strong className="text-[var(--ochre-subtle)]">400 poin / pohon</strong></div>
+              </div>
             </div>
+
+            <button
+              onClick={() => handleRedeem('Adopsi 1 Bibit Mangrove', 400)}
+              disabled={clothPoints < 400}
+              className="btn-primary w-full justify-center text-xs py-2 bg-white text-[var(--forest-deep)] border-white mt-1 cursor-pointer"
+              style={{ opacity: clothPoints >= 400 ? 1 : 0.4 }}
+            >
+              Adopsi Bibit Mangrove (400 Poin)
+            </button>
+          </div>
+
+        </section>
+
+        {/* 3. Rewards Vouchers */}
+        <section>
+          <span className="label-eyebrow block mb-3">Voucher Mitra Sirkular</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {vouchers.map(v => {
+              const canClaim = clothPoints >= v.pointsCost;
+              return (
+                <div key={v.id} className="p-4 bg-white border border-[var(--border-hairline)] flex flex-col justify-between gap-3">
+                  <div>
+                    <h4 className="font-semibold text-xs text-[var(--ink-primary)]">{v.title}</h4>
+                    <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{v.description}</p>
+                    <span className="text-[10px] text-gray-400 block mt-1">Berlaku s.d. {v.validUntil}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-[var(--border-hairline)]">
+                    <strong className="text-xs text-[var(--forest-deep)] font-mono">{v.pointsCost} Poin</strong>
+                    <button
+                      onClick={() => handleRedeem(v.title, v.pointsCost)}
+                      disabled={!canClaim}
+                      className="btn-primary text-[10px] py-1 px-2.5 cursor-pointer"
+                      style={{ opacity: canClaim ? 1 : 0.4 }}
+                    >
+                      Klaim
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
 
-        {/* Certificate Section */}
-        <section>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <div>
-              <span className="label-caps">Sertifikat Dampak</span>
-              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', marginTop: '0.5rem', lineHeight: 1.1 }}>Bukti kontribusi yang bisa dibagikan.</h2>
-            </div>
-            <button onClick={() => setActiveCert(!activeCert)} className="btn-secondary">
-              <Trophy size={14} strokeWidth={1.5} />
-              {activeCert ? 'Tutup' : 'Lihat Sertifikat'}
+        {/* 4. Digital Certificate */}
+        <section className="border-t border-[var(--border-hairline)] pt-6 flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <span className="label-eyebrow">Dokumen Verifikasi</span>
+            <button onClick={() => setActiveCert(!activeCert)} className="btn-secondary text-xs py-1.5 px-3 cursor-pointer">
+              {activeCert ? 'Tutup Sertifikat' : 'Lihat Sertifikat Dampak'}
             </button>
           </div>
 
           {activeCert && (
-            <div style={{ border: '2px solid var(--ink)', padding: '3rem', fontFamily: "'Playfair Display', serif" }}>
-              {/* Newspaper-style certificate */}
-              <div style={{ textAlign: 'center', borderBottom: '1px solid var(--ink)', paddingBottom: '2rem', marginBottom: '2rem' }}>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.625rem', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.75rem', color: 'var(--ink-muted)' }}>
-                  Republic of ClothLoop · Certificate of Impact · {new Date().getFullYear()}
-                </p>
-                <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', lineHeight: 1.1, marginBottom: '0.5rem' }}>
-                  Sertifikat Dampak Sirkular
-                </h2>
-                <p style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: '0.875rem', color: 'var(--ink-muted)', fontStyle: 'italic' }}>
-                  Diterbitkan oleh Platform ClothLoop.id
-                </p>
+            <div className="p-6 bg-white border border-[var(--ink-primary)] text-center flex flex-col gap-3 font-mono text-xs">
+              <span className="text-[10px] text-gray-400 uppercase tracking-widest block">CLOTHLOOP IMPACT AUDIT CERTIFICATE</span>
+              <h3 style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl font-bold font-serif text-[var(--ink-primary)]">
+                Sertifikat Kontribusi Sirkular
+              </h3>
+              <p className="text-xs text-gray-600 italic">Diterbitkan atas pencapaian pengalihan limbah tekstil dan pelestarian air.</p>
+              
+              <div className="grid grid-cols-3 gap-2 py-3 border-y border-[var(--border-hairline)] text-xs">
+                <div><strong>{formatNumber(Math.round(totalWater))} L</strong><span className="block text-[10px] text-gray-400">Air Dihemat</span></div>
+                <div><strong>{totalCo2.toFixed(1)} kg</strong><span className="block text-[10px] text-gray-400">CO₂e Terhindar</span></div>
+                <div><strong>{totalItems} Helai</strong><span className="block text-[10px] text-gray-400">Pakaian</span></div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', textAlign: 'center', marginBottom: '2rem' }}>
-                {[
-                  [formatNumber(Math.round(totalWater)), 'liter', 'Air Bersih Terhemat'],
-                  [totalCo2.toFixed(1), 'kg', 'CO₂ Emisi Dicegah'],
-                  [String(totalItems), 'helai', 'Pakaian Diselamatkan'],
-                  [formatNumber(clothPoints), 'pts', 'ClothPoints Diraih'],
-                ].map(([v, u, l]) => (
-                  <div key={l} style={{ borderRight: '1px solid var(--line)', padding: '1rem' }}>
-                    <span style={{ fontSize: '2.5rem', fontWeight: 700, display: 'block', lineHeight: 1 }}>{v}</span>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 300, fontSize: '0.75rem', color: 'var(--ink-muted)', display: 'block', marginTop: '0.25rem' }}>{u}</span>
-                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--ink-faint)', letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginTop: '0.5rem' }}>{l}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--ink)', paddingTop: '1.5rem' }}>
-                <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--ink-faint)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                  clothloop.id · {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
-                </span>
-                <button style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'var(--ink-muted)', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
-                  <Share2 size={14} strokeWidth={1.5} />
-                  Bagikan Sertifikat
-                </button>
+              <div className="text-[10px] text-gray-400 text-center">
+                Diverifikasi oleh ClothLoop Circular Network &middot; ID: CL-{Math.random().toString(36).substring(2, 8).toUpperCase()}
               </div>
             </div>
           )}

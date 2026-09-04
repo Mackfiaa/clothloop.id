@@ -2,23 +2,19 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { useApp } from '@/lib/store';
-import { ArrowRight, Lock, Mail, AlertCircle } from 'lucide-react';
+import { ArrowRight, Lock, Mail, AlertCircle, CheckCircle2, Shield } from 'lucide-react';
 
 function translateAuthError(message: string): string {
   if (message.includes('Invalid login credentials')) {
-    return 'Email atau password salah. Silakan periksa kembali.';
+    return 'Email atau kata sandi tidak cocok. Silakan periksa kembali.';
   }
   if (message.includes('Email not confirmed')) {
-    return 'Email belum dikonfirmasi. Kami telah memverifikasi akunmu secara otomatis, silakan coba tekan Masuk lagi.';
+    return 'Email belum diverifikasi. Silakan cek inbox atau coba masuk kembali.';
   }
-  if (message.includes('User already registered')) {
-    return 'Email ini sudah terdaftar. Silakan masuk.';
-  }
-  if (message.includes('Password should be at least 6 characters')) {
-    return 'Password minimal harus 6 karakter.';
+  if (message.includes('Too many requests')) {
+    return 'Terlalu banyak percobaan masuk. Harap tunggu beberapa saat.';
   }
   return message;
 }
@@ -49,12 +45,23 @@ export default function LoginPage() {
       }
 
       if (data?.user) {
-        addNotification('success', 'Selamat Datang Kembali!', `Berhasil masuk sebagai ${data.user.email}`);
-        // Full navigation ensures cookie sync & fresh auth state
+        // Fetch role from profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, role')
+          .eq('id', data.user.id)
+          .single();
+
+        const roleName = profile?.role || 'USER';
+        addNotification(
+          'success',
+          'Berhasil Masuk',
+          `Selamat datang kembali, ${profile?.full_name || data.user.email} (${roleName}).`
+        );
         window.location.href = '/';
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Terjadi kesalahan saat login';
+      const message = err instanceof Error ? err.message : 'Terjadi kendala saat proses masuk';
       setErrorMsg(translateAuthError(message));
     } finally {
       setLoading(false);
@@ -62,125 +69,75 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ background: 'var(--cream)', minHeight: 'calc(100vh - 3.75rem)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem 1.5rem' }}>
-      <div style={{
-        maxWidth: '56rem',
-        width: '100%',
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        background: 'var(--white)',
-        border: '1px solid var(--line)',
-        overflow: 'hidden',
-        boxShadow: '0 12px 48px rgba(15, 14, 13, 0.05)',
-      }} className="grid-cols-1 md:grid-cols-2">
-
-        {/* Left: Editorial Image & Quote */}
-        <div style={{ position: 'relative', minHeight: '28rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '3rem', background: 'var(--forest)' }} className="hidden md:flex">
-          <div style={{ position: 'absolute', inset: 0, opacity: 0.25 }}>
-            <Image
-              src="/hero-portrait.jpg"
-              alt="ClothLoop Sustainable Fashion"
-              fill
-              className="object-cover"
-              sizes="50vw"
-            />
-          </div>
-          
-          <div style={{ position: 'relative', zIndex: 10 }}>
-            <span className="label-caps" style={{ color: 'var(--sage-light)' }}>
-              ClothLoop.id
-            </span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', color: '#fff', marginTop: '1rem', lineHeight: 1.15 }}>
-              Kembali merawat masa depan<br />
-              <em style={{ fontStyle: 'italic', color: 'var(--sage-light)' }}>fashion sirkular.</em>
-            </h2>
-          </div>
-
-          <div style={{ position: 'relative', zIndex: 10, borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '1.5rem' }}>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>
-              Setiap donasi pakaian, transaksi preloved, dan karya artisan tersimpan transparan di akunmu.
-            </p>
-          </div>
+    <div className="min-h-[85vh] flex items-center justify-center p-4 bg-[var(--surface-main)] py-10">
+      <div className="max-w-md w-full bg-white p-6 sm:p-9 border border-[var(--border-hairline)] shadow-sm">
+        
+        {/* Brand Heading */}
+        <div className="text-center mb-6">
+          <span className="label-eyebrow block mb-1">Masuk ke Akun</span>
+          <h1 style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl font-bold text-[var(--ink-primary)]">
+            ClothLoop.id
+          </h1>
+          <p className="text-xs text-[var(--ink-muted)] mt-1">
+            Akses dashboard Eco-Citizen, Toko Preloved, Studio Rework, atau Mitra Kurir.
+          </p>
         </div>
 
-        {/* Right: Login Form */}
-        <div style={{ padding: '3rem 2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        {errorMsg && (
+          <div className="p-3 mb-5 bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+            <AlertCircle size={14} className="shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div>
-            <span className="label-caps">Selamat Datang</span>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', color: 'var(--ink)', marginTop: '0.5rem', lineHeight: 1.15 }}>
-              Masuk ke akunmu
-            </h1>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.875rem', color: 'var(--ink-muted)', marginTop: '0.5rem' }}>
-              Belum punya akun?{' '}
-              <Link href="/auth/register" style={{ color: 'var(--forest)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: '3px' }}>
-                Daftar gratis
-              </Link>
-            </p>
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Alamat Email</span>
+            <div className="relative">
+              <Mail size={13} className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                placeholder="nama@email.com"
+                className="input-minimal text-xs pl-5"
+              />
+            </div>
           </div>
 
-          {errorMsg && (
-            <div style={{ marginTop: '1.5rem', padding: '0.875rem 1rem', background: 'var(--terracotta-light)', border: '1px solid rgba(196,107,58,0.3)', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-              <AlertCircle size={16} style={{ color: 'var(--terracotta)', flexShrink: 0 }} />
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'var(--terracotta)', lineHeight: 1.4 }}>
-                {errorMsg}
-              </p>
+          <div>
+            <div className="flex justify-between items-baseline mb-1">
+              <span className="text-[10px] text-gray-500 uppercase tracking-wider">Kata Sandi</span>
             </div>
-          )}
-
-          <form onSubmit={handleLogin} style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div>
-              <span className="label-caps" style={{ fontSize: '0.625rem', display: 'block', marginBottom: '0.375rem' }}>Email</span>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nama@email.com"
-                  className="input-underline"
-                  style={{ paddingRight: '2rem' }}
-                />
-                <Mail size={16} style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-faint)' }} />
-              </div>
+            <div className="relative">
+              <Lock size={13} className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                className="input-minimal text-xs pl-5"
+              />
             </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.375rem' }}>
-                <span className="label-caps" style={{ fontSize: '0.625rem' }}>Password</span>
-              </div>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="input-underline"
-                  style={{ paddingRight: '2rem' }}
-                />
-                <Lock size={16} style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-faint)' }} />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary"
-              style={{ width: '100%', justifyContent: 'center', marginTop: '1rem', opacity: loading ? 0.7 : 1 }}
-            >
-              {loading ? 'Memproses Masuk...' : (
-                <>
-                  Masuk Sekarang <ArrowRight size={14} />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--line)', textAlign: 'center' }}>
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-faint)' }}>
-              Dengan masuk, kamu menyetujui Ketentuan Layanan & Kebijakan Privasi ClothLoop.id
-            </span>
           </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-primary w-full justify-center text-xs py-2.5 mt-2 cursor-pointer"
+          >
+            {loading ? 'Memverifikasi...' : 'Masuk ke Platform'}
+            <ArrowRight size={13} />
+          </button>
+        </form>
+
+        <div className="mt-6 pt-4 border-t border-[var(--border-hairline)] text-center text-xs text-[var(--ink-muted)]">
+          Belum memiliki akun terdaftar?{' '}
+          <Link href="/auth/register" className="font-semibold text-[var(--forest-deep)] underline">
+            Daftar Akun Baru
+          </Link>
         </div>
 
       </div>
