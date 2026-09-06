@@ -98,12 +98,9 @@ export default function SellerPortalPage() {
   const [withdrawAmount, setWithdrawAmount] = useState(50000);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
 
-  const loadProducts = () => {
-    fetchMarketItems().then((fetched) => {
-      const local = getCustomSellerItems();
-      const combined = [...local, ...fetched.filter(f => !local.some(l => l.id === f.id))];
-      setProducts(combined);
-    });
+  const loadProducts = async () => {
+    const fetched = await fetchMarketItems();
+    setProducts(fetched);
   };
 
   useEffect(() => {
@@ -181,15 +178,15 @@ export default function SellerPortalPage() {
     setIsEditOpen(true);
   };
 
-  const handleDeleteProduct = (productId: string, productTitle: string) => {
+  const handleDeleteProduct = async (productId: string, productTitle: string) => {
     if (confirm(`Yakin ingin menghapus pakaian "${productTitle}" dari katalog?`)) {
-      deletePrelovedItem(productId);
-      loadProducts();
+      await deletePrelovedItem(productId);
+      await loadProducts();
       addNotification('info', 'Pakaian Dihapus', `${productTitle} berhasil dihapus dari katalog.`);
     }
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId || !editTitle.trim() || editPrice <= 0) {
       addNotification('warning', 'Form Belum Lengkap', 'Harap isi nama pakaian dan harga jual yang valid.');
@@ -226,13 +223,13 @@ export default function SellerPortalPage() {
       reviewCount: 0,
     };
 
-    updatePrelovedItem(updatedItem);
-    loadProducts();
+    await updatePrelovedItem(updatedItem);
+    await loadProducts();
     setIsEditOpen(false);
     addNotification('success', 'Pakaian Diperbarui', `${editTitle} berhasil diperbarui.`);
   };
 
-  const handleUploadSubmit = (e: React.FormEvent) => {
+  const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || price <= 0) {
       addNotification('warning', 'Form Belum Lengkap', 'Harap isi nama pakaian dan harga jual yang valid.');
@@ -269,8 +266,8 @@ export default function SellerPortalPage() {
       reviewCount: 0,
     };
 
-    saveNewPrelovedItem(newItem);
-    loadProducts();
+    await saveNewPrelovedItem(newItem);
+    await loadProducts();
     setIsUploadOpen(false);
     addNotification('success', 'Pakaian Berhasil Ditambahkan', `${title} telah terdaftar di katalog pakaian Anda.`);
 

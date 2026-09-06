@@ -197,12 +197,9 @@ export default function CraftsmanPortalPage() {
 
   const studioName = userProfile?.business_name || userProfile?.full_name || 'Studio Daur Asri';
 
-  const loadProducts = () => {
-    fetchCraftProducts().then((fetched) => {
-      const local = getCustomCraftProducts();
-      const combined = [...local, ...fetched.filter(f => !local.some(l => l.id === f.id))];
-      setProducts(combined);
-    });
+  const loadProducts = async () => {
+    const fetched = await fetchCraftProducts();
+    setProducts(fetched);
   };
 
   useEffect(() => {
@@ -293,15 +290,15 @@ export default function CraftsmanPortalPage() {
     setIsEditOpen(true);
   };
 
-  const handleDeleteProduct = (productId: string, productTitle: string) => {
+  const handleDeleteProduct = async (productId: string, productTitle: string) => {
     if (confirm(`Yakin ingin menghapus produk "${productTitle}" dari katalog kerajinan?`)) {
-      deleteCraftProduct(productId);
-      loadProducts();
+      await deleteCraftProduct(productId);
+      await loadProducts();
       addNotification('info', 'Karya Dihapus', `${productTitle} berhasil dihapus dari katalog.`);
     }
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId || !editTitle.trim() || editPrice <= 0) {
       addNotification('warning', 'Form Belum Lengkap', 'Harap isi nama karya dan harga jual yang valid.');
@@ -333,13 +330,13 @@ export default function CraftsmanPortalPage() {
       co2SavedKg: 4.8,
     };
 
-    updateCraftProduct(updatedProduct);
-    loadProducts();
+    await updateCraftProduct(updatedProduct);
+    await loadProducts();
     setIsEditOpen(false);
     addNotification('success', 'Karya Berhasil Diperbarui', `${editTitle} dan stok berhasil diperbarui.`);
   };
 
-  const handleUploadSubmit = (e: React.FormEvent) => {
+  const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || price <= 0) {
       addNotification('warning', 'Form Belum Lengkap', 'Harap isi nama karya dan harga jual yang valid.');
@@ -371,8 +368,8 @@ export default function CraftsmanPortalPage() {
       co2SavedKg: 4.8,
     };
 
-    saveNewCraftProduct(newProduct);
-    loadProducts();
+    await saveNewCraftProduct(newProduct);
+    await loadProducts();
     setIsUploadOpen(false);
     addNotification('success', 'Karya Berhasil Ditambahkan', `${title} (Stok: ${stockCount}) telah terdaftar di katalog kerajinan Anda.`);
 

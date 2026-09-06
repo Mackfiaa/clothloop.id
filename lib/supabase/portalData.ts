@@ -301,11 +301,7 @@ export function getAllMarketItemsWithSellers(): MarketItem[] {
   return getCustomSellerItems();
 }
 
-export async function saveNewPrelovedItem(item: MarketItem): Promise<void> {
-  const current = getCustomSellerItems();
-  const updated = [item, ...current.filter(p => p.id !== item.id)];
-  setLocal('clothloop_seller_items', updated);
-
+export async function saveNewPrelovedItem(item: MarketItem): Promise<{ success: boolean; error?: any }> {
   try {
     const supabase = createClient();
     const { error } = await supabase.from('market_items').upsert({
@@ -332,17 +328,16 @@ export async function saveNewPrelovedItem(item: MarketItem): Promise<void> {
     });
     if (error) {
       console.error('Failed to sync preloved item to Supabase:', error);
+      return { success: false, error };
     }
+    return { success: true };
   } catch (err) {
     console.error('Error in saveNewPrelovedItem:', err);
+    return { success: false, error: err };
   }
 }
 
-export async function updatePrelovedItem(item: MarketItem): Promise<void> {
-  const current = getCustomSellerItems();
-  const updated = current.map(p => p.id === item.id ? item : p);
-  setLocal('clothloop_seller_items', updated);
-
+export async function updatePrelovedItem(item: MarketItem): Promise<{ success: boolean; error?: any }> {
   try {
     const supabase = createClient();
     const { error } = await supabase.from('market_items').upsert({
@@ -369,25 +364,27 @@ export async function updatePrelovedItem(item: MarketItem): Promise<void> {
     });
     if (error) {
       console.error('Failed to update preloved item in Supabase:', error);
+      return { success: false, error };
     }
+    return { success: true };
   } catch (err) {
     console.error('Error in updatePrelovedItem:', err);
+    return { success: false, error: err };
   }
 }
 
-export async function deletePrelovedItem(itemId: string): Promise<void> {
-  const current = getCustomSellerItems();
-  const updated = current.filter(p => p.id !== itemId);
-  setLocal('clothloop_seller_items', updated);
-
+export async function deletePrelovedItem(itemId: string): Promise<{ success: boolean; error?: any }> {
   try {
     const supabase = createClient();
     const { error } = await supabase.from('market_items').delete().eq('id', itemId);
     if (error) {
       console.error('Failed to delete preloved item from Supabase:', error);
+      return { success: false, error };
     }
+    return { success: true };
   } catch (err) {
     console.error('Error in deletePrelovedItem:', err);
+    return { success: false, error: err };
   }
 }
 
@@ -419,11 +416,7 @@ export function getAllCraftProductsWithArtisans(): CraftProduct[] {
   return getCustomCraftProducts();
 }
 
-export async function saveNewCraftProduct(product: CraftProduct): Promise<void> {
-  const current = getCustomCraftProducts();
-  const updated = [product, ...current.filter(p => p.id !== product.id)];
-  setLocal('clothloop_artisan_crafts', updated);
-
+export async function saveNewCraftProduct(product: CraftProduct): Promise<{ success: boolean; error?: any }> {
   try {
     const supabase = createClient();
     const { error } = await supabase.from('craft_products').upsert({
@@ -448,17 +441,16 @@ export async function saveNewCraftProduct(product: CraftProduct): Promise<void> 
     });
     if (error) {
       console.error('Failed to sync craft product to Supabase:', error);
+      return { success: false, error };
     }
+    return { success: true };
   } catch (err) {
     console.error('Error in saveNewCraftProduct:', err);
+    return { success: false, error: err };
   }
 }
 
-export async function updateCraftProduct(product: CraftProduct): Promise<void> {
-  const current = getCustomCraftProducts();
-  const updated = current.map(p => p.id === product.id ? product : p);
-  setLocal('clothloop_artisan_crafts', updated);
-
+export async function updateCraftProduct(product: CraftProduct): Promise<{ success: boolean; error?: any }> {
   try {
     const supabase = createClient();
     const { error } = await supabase.from('craft_products').upsert({
@@ -483,25 +475,27 @@ export async function updateCraftProduct(product: CraftProduct): Promise<void> {
     });
     if (error) {
       console.error('Failed to update craft product in Supabase:', error);
+      return { success: false, error };
     }
+    return { success: true };
   } catch (err) {
     console.error('Error in updateCraftProduct:', err);
+    return { success: false, error: err };
   }
 }
 
-export async function deleteCraftProduct(productId: string): Promise<void> {
-  const current = getCustomCraftProducts();
-  const updated = current.filter(p => p.id !== productId);
-  setLocal('clothloop_artisan_crafts', updated);
-
+export async function deleteCraftProduct(productId: string): Promise<{ success: boolean; error?: any }> {
   try {
     const supabase = createClient();
     const { error } = await supabase.from('craft_products').delete().eq('id', productId);
     if (error) {
       console.error('Failed to delete craft product from Supabase:', error);
+      return { success: false, error };
     }
+    return { success: true };
   } catch (err) {
     console.error('Error in deleteCraftProduct:', err);
+    return { success: false, error: err };
   }
 }
 
