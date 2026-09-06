@@ -1,12 +1,12 @@
 -- ==============================================================================
--- CLOTHLOOP.ID - SEED & RESET KATALOG KERAJINAN & PRELOVED BARU
+-- CLOTHLOOP.ID - COMPLETE DATABASE SEED (KERAJINAN & PRELOVED)
 -- ==============================================================================
 
--- 1. BERSIHKAN DATA KATALOG LAMA DI SUPABASE
-TRUNCATE TABLE public.craft_products;
-TRUNCATE TABLE public.market_items;
+-- 1. BERSIHKAN DATA KATALOG TERLEBIH DAHULU
+TRUNCATE TABLE public.craft_products CASCADE;
+TRUNCATE TABLE public.market_items CASCADE;
 
--- 2. INSERT 5 PRODUK KERAJINAN TERBARU (SESUAI FOTO & HARGA NORMAL)
+-- 2. SEED KATALOG KERAJINAN UMKM (CRAFT PRODUCTS)
 INSERT INTO public.craft_products (
   id,
   title,
@@ -25,7 +25,8 @@ INSERT INTO public.craft_products (
   rating,
   review_count,
   water_saved_liters,
-  co2_saved_kg
+  co2_saved_kg,
+  created_at
 ) VALUES
 (
   'craft-denim-tote-bag',
@@ -45,7 +46,8 @@ INSERT INTO public.craft_products (
   5.0,
   18,
   3800,
-  5.2
+  5.2,
+  NOW()
 ),
 (
   'craft-denim-coin-pouch',
@@ -65,7 +67,8 @@ INSERT INTO public.craft_products (
   4.9,
   14,
   1200,
-  1.8
+  1.8,
+  NOW()
 ),
 (
   'craft-star-keychain',
@@ -85,7 +88,8 @@ INSERT INTO public.craft_products (
   5.0,
   27,
   650,
-  0.9
+  0.9,
+  NOW()
 ),
 (
   'craft-mini-wallet',
@@ -105,5 +109,128 @@ INSERT INTO public.craft_products (
   5.0,
   19,
   2100,
-  2.9
+  2.9,
+  NOW()
+);
+
+-- 3. SEED KATALOG PAKAIAN PRELOVED (MARKET ITEMS)
+INSERT INTO public.market_items (
+  id,
+  title,
+  brand,
+  seller_name,
+  seller_avatar,
+  seller_city,
+  price,
+  original_price,
+  condition,
+  category,
+  size,
+  measurements,
+  material,
+  story,
+  images,
+  water_saved_liters,
+  co2_saved_kg,
+  is_verified_qc,
+  status,
+  rating,
+  review_count,
+  created_at
+) VALUES
+(
+  'mkt-preloved-1',
+  'Kemeja Flanel Kotak Oversized',
+  'Uniqlo',
+  'Nadya Thrift Curated',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+  'Jakarta Selatan',
+  95000,
+  299000,
+  'LIKE_NEW',
+  'Pria',
+  'L',
+  '{"chestWidthCm": 56, "lengthCm": 74}'::jsonb,
+  '100% Katun Flanel',
+  'Kemeja flanel tebal berkualitas dalam kondisi like-new (99%). Hanya dipakai 2x untuk foto studio, warna pekat tanpa noda.',
+  ARRAY['https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&w=800&q=80'],
+  2700,
+  3.6,
+  true,
+  'AVAILABLE',
+  5.0,
+  12,
+  NOW()
+),
+(
+  'mkt-preloved-2',
+  'Jaket Denim Trucker Vintage 90s',
+  'Levi''s',
+  'RetroStyle Studio',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+  'Bandung',
+  245000,
+  899000,
+  'VINTAGE',
+  'Denim & Jeans',
+  'M',
+  '{"chestWidthCm": 52, "lengthCm": 64}'::jsonb,
+  '100% Heavy Denim Katun',
+  'Jaket denim vintage asli era 90-an dengan wash natural yang sangat berkarakter. Kondisi terawat sempurna dengan jahitan rantai klasik.',
+  ARRAY['https://images.unsplash.com/photo-1576995853123-5a10305d93c0?auto=format&fit=crop&w=800&q=80'],
+  4200,
+  6.1,
+  true,
+  'AVAILABLE',
+  4.9,
+  24,
+  NOW()
+),
+(
+  'mkt-preloved-3',
+  'Oversized Cable Knit Cardigan',
+  'Zara',
+  'Clara Vintage Wardrobe',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
+  'Surabaya',
+  135000,
+  450000,
+  'GENTLY_USED',
+  'Outerwear',
+  'Free Size (S-L)',
+  '{"chestWidthCm": 58, "lengthCm": 70}'::jsonb,
+  'Rajut Katun Halus',
+  'Cardigan rajut warna beige pastel yang hangat dan stylish. Serat benang lembut, tidak berbulu, dan sangat nyaman dipakai daily.',
+  ARRAY['https://images.unsplash.com/photo-1434389677669-e08b4cac3105?auto=format&fit=crop&w=800&q=80'],
+  3100,
+  4.2,
+  true,
+  'AVAILABLE',
+  5.0,
+  9,
+  NOW()
+),
+(
+  'mkt-preloved-4',
+  'Celana Corduroy Wide-Leg Retro',
+  'H&M',
+  'Urban Sirkular Jakarta',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+  'Jakarta Timur',
+  110000,
+  399000,
+  'LIKE_NEW',
+  'Wanita',
+  'M (28-29)',
+  '{"chestWidthCm": 0, "lengthCm": 98}'::jsonb,
+  'Kain Corduroy Lembut',
+  'Celana corduroy berpotongan wide-leg vintage warna cokelat bata. Pinggang elastis nyaman, saku fungsional, kondisi 98% terawat.',
+  ARRAY['https://images.unsplash.com/photo-1584370848010-d7fe6bc767ec?auto=format&fit=crop&w=800&q=80'],
+  2500,
+  3.3,
+  true,
+  'AVAILABLE',
+  4.8,
+  15,
+  NOW()
 );
