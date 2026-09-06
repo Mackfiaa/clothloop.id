@@ -64,9 +64,10 @@ export default function CraftMarketplacePage() {
 
   useEffect(() => {
     fetchCraftProducts().then((fetched) => {
-      const liveCrafts = getAllCraftProductsWithArtisans();
-      const combined = [...liveCrafts, ...fetched.filter(f => !liveCrafts.some(lc => lc.id === f.id))];
-      setProducts(combined.length > 0 ? combined : fetched);
+      setProducts(fetched);
+      if (fetched.length === 0 && typeof window !== 'undefined') {
+        localStorage.removeItem('clothloop_artisan_crafts');
+      }
     });
     const savedWishlist = localStorage.getItem('clothloop_craft_wishlist');
     if (savedWishlist) {

@@ -73,9 +73,10 @@ export default function MarketPage() {
 
   useEffect(() => {
     fetchMarketItems().then((fetched) => {
-      const liveItems = getAllMarketItemsWithSellers();
-      const combined = [...liveItems, ...fetched.filter(f => !liveItems.some(li => li.id === f.id))];
-      setItems(combined.length > 0 ? combined : fetched);
+      setItems(fetched);
+      if (fetched.length === 0 && typeof window !== 'undefined') {
+        localStorage.removeItem('clothloop_seller_items');
+      }
     });
     const saved = localStorage.getItem('clothloop_wishlist');
     if (saved) {

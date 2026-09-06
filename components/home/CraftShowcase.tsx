@@ -21,9 +21,7 @@ export function CraftShowcase() {
 
   useEffect(() => {
     fetchCraftProducts().then((fetched) => {
-      const liveCrafts = getAllCraftProductsWithArtisans();
-      const combined = [...liveCrafts, ...fetched.filter((f) => !liveCrafts.some((lc) => lc.id === f.id))];
-      setCrafts(combined);
+      setCrafts(fetched);
     });
   }, []);
 
