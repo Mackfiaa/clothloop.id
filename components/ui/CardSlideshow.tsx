@@ -1,149 +1,179 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface SlideItem {
   id: string;
   image: string;
-  title?: string;
-  subtitle?: string;
-  tag?: string;
-  link?: string;
+  tag: string;
+  title: string;
+  subtitle: string;
 }
 
 interface CardSlideshowProps {
   slides: SlideItem[];
-  aspectRatio?: string;
   autoPlay?: boolean;
   interval?: number;
-  showDots?: boolean;
-  showArrows?: boolean;
-  className?: string;
+  aspectRatio?: string;
 }
+
+const slideVariants: Variants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 80 : -80,
+    opacity: 0,
+    scale: 0.96,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    transition: {
+      x: { type: 'spring' as const, stiffness: 320, damping: 32 },
+      opacity: { duration: 0.35 },
+      scale: { duration: 0.35 },
+    },
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 80 : -80,
+    opacity: 0,
+    scale: 0.96,
+    transition: {
+      x: { type: 'spring' as const, stiffness: 320, damping: 32 },
+      opacity: { duration: 0.25 },
+      scale: { duration: 0.25 },
+    },
+  }),
+};
 
 export function CardSlideshow({
   slides,
-  aspectRatio = 'aspect-[16/10]',
-  autoPlay = false,
+  autoPlay = true,
   interval = 5000,
-  showDots = true,
-  showArrows = true,
-  className = '',
+  aspectRatio = 'aspect-[16/10]',
 }: CardSlideshowProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [[current, direction], setPage] = useState([0, 0]);
 
-  const nextSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
-  }, [slides.length]);
-
-  const prevSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
-  }, [slides.length]);
+  const paginate = (newDirection: number) => {
+    setPage(([prev]) => {
+      const nextIndex = (prev + newDirection + slides.length) % slides.length;
+      return [nextIndex, newDirection];
+    });
+  };
 
   useEffect(() => {
     if (!autoPlay || slides.length <= 1) return;
-    const timer = setInterval(nextSlide, interval);
+    const timer = setInterval(() => {
+      paginate(1);
+    }, interval);
     return () => clearInterval(timer);
-  }, [autoPlay, interval, nextSlide, slides.length]);
+  }, [autoPlay, interval, slides.length]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.touches[0].clientX);
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStart === null) return;
-    const diff = touchStart - e.changedTouches[0].clientX;
-    if (diff > 40) nextSlide();
-    if (diff < -40) prevSlide();
-    setTouchStart(null);
-  };
-
-  if (!slides || slides.length === 0) return null;
-  const current = slides[currentIndex];
+  if (slides.length === 0) return null;
+  const slide = slides[current];
 
   return (
-    <div
-      className={`relative w-full overflow-hidden bg-[var(--surface-muted)] border border-[var(--border-hairline)] select-none group ${className}`}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
-      <div className={`relative w-full ${aspectRatio}`}>
-        <Image
-          src={current.image}
-          alt={current.title || 'Slideshow image'}
-          fill
-          className="object-cover transition-opacity duration-300"
-          sizes="(max-width: 768px) 100vw, 50vw"
-        />
-
-        {/* Minimalist Subdued Caption Bar */}
-        {(current.title || current.tag) && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/25 flex flex-col justify-between p-4 sm:p-5 text-white">
-            <div className="flex justify-between items-start">
-              {current.tag && (
-                <span className="bg-white text-[var(--ink-primary)] text-[10px] font-semibold uppercase px-2 py-0.5 tracking-wider">
-                  {current.tag}
+    <div className="relative w-full overflow-hidden rounded-3xl border-2 border-emerald-600/30 bg-stone-900 shadow-2xl group">
+      
+      {/* Aspect Ratio Box with Animated Presence */}
+      <div className={`relative w-full ${aspectRatio} overflow-hidden`}>
+        <AnimatePresence initial={false} custom={direction} mode="wait">
+          <motion.div
+            key={slide.id}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="absolute inset-0 w-full h-full"
+          >
+            <Image
+              src={slide.image}
+              alt={slide.title}
+              fill
+              priority
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
+            {/* Rich Emerald & Dark Vignette Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/40 via-transparent to-transparent pointer-events-none" />
+            
+            {/* Content Text Overlay */}
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.4 }}
+              className="absolute bottom-0 left-0 right-0 p-5 sm:p-7 text-white flex flex-col gap-2 z-10"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-emerald-400 to-teal-400 text-emerald-950 px-3 py-1 rounded-full shadow-md font-mono">
+                  {slide.tag}
                 </span>
-              )}
-              <span className="text-[10px] font-mono bg-black/60 px-2 py-0.5 text-white/80">
-                {currentIndex + 1} / {slides.length}
-              </span>
-            </div>
-
-            {current.title && (
-              <div>
-                {current.subtitle && (
-                  <p className="text-[11px] text-white/80 font-normal mb-0.5">
-                    {current.subtitle}
-                  </p>
-                )}
-                <h4 style={{ fontFamily: "'Playfair Display', serif" }} className="text-base sm:text-lg font-bold leading-snug text-white">
-                  {current.title}
-                </h4>
               </div>
-            )}
-          </div>
-        )}
+              <h3 className="text-lg sm:text-2xl font-black text-white leading-tight drop-shadow-sm tracking-tight">
+                {slide.title}
+              </h3>
+              <p className="text-xs sm:text-sm text-white/90 line-clamp-2 font-normal leading-relaxed">
+                {slide.subtitle}
+              </p>
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      {/* Navigation Arrows */}
-      {showArrows && slides.length > 1 && (
-        <>
-          <button
-            onClick={(e) => { e.stopPropagation(); prevSlide(); }}
-            aria-label="Previous slide"
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-white text-[var(--ink-primary)] border border-[var(--border-hairline)] flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
+      {/* Prev / Next Controls with Tactile Physics */}
+      {slides.length > 1 && (
+        <div className="absolute top-1/2 -translate-y-1/2 inset-x-2.5 flex justify-between z-20 pointer-events-none">
+          <motion.button
+            whileHover={{ scale: 1.12 }}
+            whileTap={{ scale: 0.9 }}
+            type="button"
+            onClick={() => paginate(-1)}
+            aria-label="Previous Slide"
+            className="pointer-events-auto w-8 h-8 rounded-full bg-white/80 hover:bg-white text-gray-900 flex items-center justify-center shadow-md backdrop-blur-xs cursor-pointer border border-white/40"
           >
-            <ChevronLeft size={14} />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); nextSlide(); }}
-            aria-label="Next slide"
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-white text-[var(--ink-primary)] border border-[var(--border-hairline)] flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
+            <ChevronLeft size={16} />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.12 }}
+            whileTap={{ scale: 0.9 }}
+            type="button"
+            onClick={() => paginate(1)}
+            aria-label="Next Slide"
+            className="pointer-events-auto w-8 h-8 rounded-full bg-white/80 hover:bg-white text-gray-900 flex items-center justify-center shadow-md backdrop-blur-xs cursor-pointer border border-white/40"
           >
-            <ChevronRight size={14} />
-          </button>
-        </>
+            <ChevronRight size={16} />
+          </motion.button>
+        </div>
       )}
 
-      {/* Pagination Line / Dots */}
-      {showDots && slides.length > 1 && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10">
-          {slides.map((_, i) => (
+      {/* Animated Indicators */}
+      {slides.length > 1 && (
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 z-20 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/20">
+          {slides.map((s, idx) => (
             <button
-              key={i}
-              onClick={(e) => { e.stopPropagation(); setCurrentIndex(i); }}
-              aria-label={`Slide ${i + 1}`}
-              className={`h-1 transition-all ${
-                currentIndex === i ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
-              }`}
-            />
+              key={s.id}
+              type="button"
+              onClick={() => setPage([idx, idx > current ? 1 : -1])}
+              className="cursor-pointer p-0.5 border-none bg-transparent"
+              aria-label={`Go to slide ${idx + 1}`}
+            >
+              <motion.div
+                animate={{
+                  width: idx === current ? 16 : 5,
+                  backgroundColor: idx === current ? '#10b981' : 'rgba(255,255,255,0.4)',
+                }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                className="h-1.5 rounded-full"
+              />
+            </button>
           ))}
         </div>
       )}
+
     </div>
   );
 }

@@ -16,14 +16,17 @@ import {
   Scissors, 
   Truck, 
   Store,
+  Eye,
+  EyeOff,
   Check
 } from 'lucide-react';
+import { TextileKineticDecor } from '@/components/ui/TextileKineticDecor';
 
 const ROLE_OPTIONS: { id: UserRole; title: string; desc: string; icon: React.ElementType }[] = [
   {
     id: 'USER',
-    title: 'Eco-Citizen (Donatur)',
-    desc: 'Donasi pakaian lama & belanja preloved',
+    title: 'Donatur / Pembeli',
+    desc: 'Donasi pakaian bekas & belanja preloved',
     icon: User,
   },
   {
@@ -46,6 +49,8 @@ const ROLE_OPTIONS: { id: UserRole; title: string; desc: string; icon: React.Ele
   },
 ];
 
+import { recordNewRegisteredUser } from '@/lib/supabase/portalData';
+
 export default function RegisterPage() {
   const { addNotification } = useApp();
   const [role, setRole] = useState<UserRole>('USER');
@@ -53,6 +58,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [businessName, setBusinessName] = useState('');
   const [vehicleType, setVehicleType] = useState('Motor (Roda 2)');
   const [loading, setLoading] = useState(false);
@@ -86,15 +92,32 @@ export default function RegisterPage() {
       }
 
       if (data?.user) {
+        recordNewRegisteredUser({
+          id: data.user.id,
+          fullName: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          role: role,
+          createdAt: new Date().toISOString(),
+        });
+
         addNotification(
           'success',
-          'Pendaftaran Berhasil!',
-          `Selamat bergabung sebagai ${ROLE_OPTIONS.find(r => r.id === role)?.title} (+100 poin reward aktif).`
+          'Pendaftaran Berhasil',
+          `Selamat bergabung sebagai ${ROLE_OPTIONS.find(r => r.id === role)?.title}. Akun Anda telah aktif.`
         );
-        window.location.href = '/';
+        if (role === 'SELLER') {
+          window.location.href = '/seller';
+        } else if (role === 'UMKM') {
+          window.location.href = '/craftsman';
+        } else if (role === 'KURIR') {
+          window.location.href = '/courier';
+        } else {
+          window.location.href = '/';
+        }
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Terjadi kesalahan saat registrasi';
+      const message = err instanceof Error ? err.message : 'Terjadi kesalahan saat proses registrasi';
       setErrorMsg(message);
     } finally {
       setLoading(false);
@@ -102,24 +125,25 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center p-4 bg-[var(--surface-main)] py-10">
-      <div className="max-w-lg w-full bg-white p-6 sm:p-9 border border-[var(--border-hairline)] shadow-sm">
+    <div className="relative min-h-[90vh] flex items-center justify-center p-4 py-12 sm:py-16 overflow-hidden">
+      <TextileKineticDecor />
+      
+      <div className="relative z-10 max-w-lg w-full bg-white p-7 sm:p-9 border border-slate-200/90 shadow-xl rounded-3xl">
 
         {/* Heading */}
         <div className="text-center mb-6">
-          <span className="label-eyebrow block mb-1">Registrasi Akun Baru</span>
-          <h1 style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl font-bold text-[var(--ink-primary)]">
-            Gabung Gerakan Sirkular
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Registrasi Akun Baru
           </h1>
-          <p className="text-xs text-[var(--ink-muted)] mt-1">
-            Pilih peran Anda dalam ekosistem pengelolaan pakaian berkelanjutan.
+          <p className="text-xs sm:text-sm text-slate-500 mt-1.5 leading-relaxed">
+            Bergabung bersama ribuan masyarakat dalam ekonomi sirkular tekstil berkelanjutan.
           </p>
         </div>
 
         {errorMsg && (
-          <div className="p-3 mb-5 bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-            <AlertCircle size={14} className="shrink-0" />
-            <span>{errorMsg}</span>
+          <div className="p-3.5 mb-5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start gap-2.5">
+            <AlertCircle size={16} className="shrink-0 text-red-600 mt-0.5" />
+            <span className="leading-snug">{errorMsg}</span>
           </div>
         )}
 
@@ -127,10 +151,10 @@ export default function RegisterPage() {
 
           {/* 1. Role Selector Radio Grid */}
           <div>
-            <span className="label-eyebrow block mb-2 text-[10px]">
-              1. Pilih Tipe Akun / Peran Anda
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label className="text-xs font-bold text-slate-700 block mb-2">
+              1. Pilih Peran / Tipe Akun Anda
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {ROLE_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const isSelected = role === opt.id;
@@ -139,20 +163,20 @@ export default function RegisterPage() {
                     key={opt.id}
                     type="button"
                     onClick={() => setRole(opt.id)}
-                    className={`p-3 text-left border transition-all cursor-pointer flex items-start gap-2.5 ${
+                    className={`p-3 rounded-xl text-left border transition-all cursor-pointer flex items-start gap-2.5 ${
                       isSelected
-                        ? 'bg-[var(--forest-subtle)] border-[var(--forest-deep)] ring-1 ring-[var(--forest-deep)]'
-                        : 'bg-white border-[var(--border-hairline)] hover:border-gray-400'
+                        ? 'bg-emerald-50/80 border-emerald-600 ring-2 ring-emerald-600/20'
+                        : 'bg-slate-50/60 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    <div className={`p-1.5 rounded-xs shrink-0 ${isSelected ? 'bg-[var(--forest-deep)] text-white' : 'bg-gray-100 text-gray-500'}`}>
-                      <Icon size={14} />
+                    <div className={`p-2 rounded-lg shrink-0 ${isSelected ? 'bg-emerald-700 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-600'}`}>
+                      <Icon size={15} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`font-semibold text-xs ${isSelected ? 'text-[var(--forest-deep)]' : 'text-[var(--ink-primary)]'}`}>
+                      <p className={`font-bold text-xs ${isSelected ? 'text-emerald-950' : 'text-slate-800'}`}>
                         {opt.title}
                       </p>
-                      <p className="text-[10px] text-[var(--ink-muted)] mt-0.5 leading-tight">
+                      <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">
                         {opt.desc}
                       </p>
                     </div>
@@ -163,20 +187,27 @@ export default function RegisterPage() {
           </div>
 
           {/* 2. Personal Information */}
-          <div className="flex flex-col gap-3 pt-2 border-t border-[var(--border-hairline)]">
-            <span className="label-eyebrow text-[10px]">2. Data Identitas Akun</span>
+          <div className="flex flex-col gap-3.5 pt-4 border-t border-slate-100">
+            <label className="text-xs font-bold text-slate-700 block">
+              2. Data Identitas Akun
+            </label>
 
+            {/* Nama Lengkap */}
             <div>
-              <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">Nama Lengkap</span>
-              <div className="relative">
-                <User size={13} className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400" />
+              <span className="text-[11px] font-semibold text-slate-600 block mb-1">
+                Nama Lengkap
+              </span>
+              <div className="relative flex items-center">
+                <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                  <User size={16} />
+                </div>
                 <input
                   type="text"
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
                   required
-                  placeholder="Nama sesuai KTP"
-                  className="input-minimal text-xs pl-5"
+                  placeholder="Nama lengkap Anda"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 sm:py-3 pl-10 pr-4 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 outline-none transition-all"
                 />
               </div>
             </div>
@@ -184,18 +215,20 @@ export default function RegisterPage() {
             {/* Conditional Business Name for SELLER & UMKM */}
             {(role === 'SELLER' || role === 'UMKM') && (
               <div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">
+                <span className="text-[11px] font-semibold text-slate-600 block mb-1">
                   {role === 'SELLER' ? 'Nama Toko / Brand Preloved' : 'Nama Studio / Workshop Kerajinan'}
                 </span>
-                <div className="relative">
-                  <Store size={13} className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400" />
+                <div className="relative flex items-center">
+                  <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                    <Store size={16} />
+                  </div>
                   <input
                     type="text"
                     value={businessName}
                     onChange={e => setBusinessName(e.target.value)}
                     required
-                    placeholder={role === 'SELLER' ? 'Contoh: ThriftLab Senopati' : 'Contoh: Studio BoroBoro Rework'}
-                    className="input-minimal text-xs pl-5"
+                    placeholder={role === 'SELLER' ? 'Contoh: ThriftLab Senopati' : 'Contoh: Studio Daur Asri'}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 sm:py-3 pl-10 pr-4 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -204,13 +237,13 @@ export default function RegisterPage() {
             {/* Conditional Vehicle Type for KURIR */}
             {role === 'KURIR' && (
               <div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">
+                <span className="text-[11px] font-semibold text-slate-600 block mb-1">
                   Jenis Kendaraan Operasional
                 </span>
                 <select
                   value={vehicleType}
                   onChange={e => setVehicleType(e.target.value)}
-                  className="w-full bg-white border border-[var(--border-hairline)] text-xs p-2 font-medium text-[var(--ink-primary)] focus:outline-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 sm:py-3 px-3.5 text-xs sm:text-sm font-medium text-slate-900 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 outline-none transition-all"
                 >
                   <option value="Motor (Roda 2)">Motor (Roda 2 - Kapasitas s.d. 15 kg)</option>
                   <option value="Mobil Blind Van">Mobil Blind Van (Kapasitas s.d. 150 kg)</option>
@@ -220,67 +253,90 @@ export default function RegisterPage() {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Alamat Email */}
               <div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">Alamat Email</span>
-                <div className="relative">
-                  <Mail size={13} className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400" />
+                <span className="text-[11px] font-semibold text-slate-600 block mb-1">
+                  Alamat Email
+                </span>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                    <Mail size={16} />
+                  </div>
                   <input
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
                     placeholder="nama@email.com"
-                    className="input-minimal text-xs pl-5"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 sm:py-3 pl-10 pr-4 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 outline-none transition-all"
                   />
                 </div>
               </div>
 
+              {/* Nomor WhatsApp */}
               <div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">Nomor WhatsApp</span>
-                <div className="relative">
-                  <Phone size={13} className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400" />
+                <span className="text-[11px] font-semibold text-slate-600 block mb-1">
+                  Nomor WhatsApp
+                </span>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                    <Phone size={16} />
+                  </div>
                   <input
                     type="tel"
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
                     required
-                    placeholder="0812xxxxxxx"
-                    className="input-minimal text-xs pl-5"
+                    placeholder="0812xxxxxxxx"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 sm:py-3 pl-10 pr-4 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 outline-none transition-all"
                   />
                 </div>
               </div>
             </div>
 
+            {/* Kata Sandi */}
             <div>
-              <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-0.5">Password (Min. 6 Karakter)</span>
-              <div className="relative">
-                <Lock size={13} className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-400" />
+              <span className="text-[11px] font-semibold text-slate-600 block mb-1">
+                Kata Sandi Baru
+              </span>
+              <div className="relative flex items-center">
+                <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                  <Lock size={16} />
+                </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
-                  minLength={6}
-                  placeholder="••••••••"
-                  className="input-minimal text-xs pl-5"
+                  placeholder="Minimal 6 karakter"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 sm:py-3 pl-10 pr-10 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 outline-none transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
+
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary w-full justify-center text-xs py-2.5 mt-2 cursor-pointer"
+            className="btn-primary w-full justify-center text-xs sm:text-sm py-3 rounded-xl mt-1 cursor-pointer font-bold shadow-md hover:scale-[1.01] transition-transform"
           >
-            {loading ? 'Mendaftarkan Akun...' : `Daftar sebagai ${ROLE_OPTIONS.find(r => r.id === role)?.title.split(' ')[0]}`}
-            <ArrowRight size={13} />
+            {loading ? 'Memproses Pendaftaran...' : 'Daftar Akun Sekarang'}
+            <ArrowRight size={15} />
           </button>
         </form>
 
-        <div className="mt-5 pt-4 border-t border-[var(--border-hairline)] text-center text-xs text-[var(--ink-muted)]">
+        <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-500">
           Sudah memiliki akun terdaftar?{' '}
-          <Link href="/auth/login" className="font-semibold text-[var(--forest-deep)] underline">
+          <Link href="/auth/login" className="font-bold text-emerald-800 hover:underline">
             Masuk ke Akun
           </Link>
         </div>

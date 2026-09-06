@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Scissors, CheckCircle2, Send, Sparkles, Award, Wallet, Shield } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Scissors, CheckCircle2, Send, Award, Wallet, Shield, Check } from 'lucide-react';
 import { useApp } from '@/lib/store';
+import { BackgroundDecor } from '@/components/ui/BackgroundDecor';
 
 export default function PartnerArtisanPage() {
   const { addNotification } = useApp();
@@ -24,89 +26,126 @@ export default function PartnerArtisanPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addNotification('success', 'Aplikasi Perajin Diterima!', `Kurator ClothCraft akan mengulas portofolio ${workshopName} dan menghubungi WhatsApp ${whatsapp}.`);
+    addNotification('success', 'Aplikasi Perajin Diterima', `Kurator ClothCraft akan mengulas portofolio ${workshopName} dan menghubungi WhatsApp ${whatsapp}.`);
     setSubmitted(true);
   };
 
   return (
-    <div className="overflow-x-hidden">
+    <div className="relative overflow-x-hidden">
 
       {/* Header */}
-      <div className="bg-[var(--surface-muted)] border-b border-[var(--border-hairline)] py-12 sm:py-16">
-        <div className="container-site">
-          <span className="label-eyebrow text-[var(--clay)] block mb-1">Kemitraan ClothCraft</span>
-          <h1 style={{ fontFamily: "'Playfair Display', serif" }} className="text-3xl sm:text-5xl font-bold text-[var(--ink-primary)] leading-tight max-w-2xl">
-            Ubah Pakaian Usang Jadi Karya Seni Bernilai Tinggi.
-          </h1>
-          <p className="text-xs sm:text-sm text-[var(--ink-secondary)] mt-2 max-w-xl leading-relaxed">
-            Bergabunglah dengan jaringan 140+ perajin tekstil independen, tailor rekonstruksi, dan spesialis Sashiko Nusantara.
-          </p>
+      <div className="relative bg-[var(--surface-muted)] border-b border-[var(--border-hairline)] py-14 sm:py-20 overflow-hidden">
+        <BackgroundDecor variant="craft" />
+        <div className="container-site relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <span className="label-eyebrow text-[var(--clay)] block mb-1.5">Kemitraan ClothCraft</span>
+            <h1 className="text-3xl sm:text-5xl font-extrabold text-[var(--ink-primary)] leading-tight max-w-2xl tracking-tight">
+              Ubah Pakaian Usang Jadi Karya Seni Bernilai Tinggi.
+            </h1>
+            <p className="text-xs sm:text-sm text-[var(--ink-secondary)] mt-2.5 max-w-xl leading-relaxed">
+              Bergabunglah dengan jaringan 140+ perajin tekstil independen, tailor rekonstruksi, dan spesialis Sashiko Nusantara.
+            </p>
+          </motion.div>
         </div>
       </div>
 
-      <div className="container-site py-10 sm:py-16 flex flex-col gap-12">
+      <div className="container-site py-12 sm:py-16 flex flex-col gap-12">
 
         {/* 1. Keuntungan Mitra Perajin */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="card-clean p-6 flex flex-col justify-between gap-3">
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.4 }}
+            className="card-clean p-6 sm:p-7 flex flex-col justify-between gap-4"
+          >
             <div>
-              <Wallet size={20} className="text-[var(--clay)] mb-3" />
-              <h3 style={{ fontFamily: "'Playfair Display', serif" }} className="text-lg font-bold text-[var(--ink-primary)] mb-1">
-                Pendapatan Adil & Terjamin
+              <div className="w-10 h-10 rounded-xs bg-[var(--clay-subtle)] text-[var(--clay)] flex items-center justify-center mb-4">
+                <Wallet size={20} />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--ink-primary)] mb-1.5 tracking-tight">
+                Penjualan Produk Pasti & Terjamin
               </h3>
               <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
-                Tentukan tarif kustom Anda sendiri. Pembayaran dari klien dilindungi oleh escrow ClothLoop dan langsung cair saat pesanan selesai.
+                Jual karya kerajinan daur ulang Anda ke pasar nasional. Pembayaran dilindungi oleh sistem escrow ClothLoop dan langsung cair saat produk diterima pembeli.
               </p>
             </div>
-            <span className="text-[10px] font-mono text-[var(--clay)] font-semibold pt-2 border-t border-[var(--border-hairline)]">
-              Proteksi Pembayaran 100%
+            <span className="text-[10px] font-mono text-[var(--clay)] font-bold pt-3 border-t border-[var(--border-hairline)] uppercase tracking-wider">
+              Pencairan Escrow 100% Aman
             </span>
-          </div>
+          </motion.div>
 
-          <div className="card-clean p-6 flex flex-col justify-between gap-3">
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="card-clean p-6 sm:p-7 flex flex-col justify-between gap-4"
+          >
             <div>
-              <Scissors size={20} className="text-[var(--clay)] mb-3" />
-              <h3 style={{ fontFamily: "'Playfair Display', serif" }} className="text-lg font-bold text-[var(--ink-primary)] mb-1">
+              <div className="w-10 h-10 rounded-xs bg-[var(--clay-subtle)] text-[var(--clay)] flex items-center justify-center mb-4">
+                <Scissors size={20} />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--ink-primary)] mb-1.5 tracking-tight">
                 Suplai Bahan Perca Gratis
               </h3>
               <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
                 Dapatkan akses gratis ke tumpukan kain perca denim, katun, dan batik lawasan hasil sortir donasi ClothDrop untuk bahan rework Anda.
               </p>
             </div>
-            <span className="text-[10px] font-mono text-[var(--clay)] font-semibold pt-2 border-t border-[var(--border-hairline)]">
+            <span className="text-[10px] font-mono text-[var(--clay)] font-bold pt-3 border-t border-[var(--border-hairline)] uppercase tracking-wider">
               Akses Bahan Kain Berkala
             </span>
-          </div>
+          </motion.div>
 
-          <div className="card-clean p-6 flex flex-col justify-between gap-3">
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="card-clean p-6 sm:p-7 flex flex-col justify-between gap-4"
+          >
             <div>
-              <Award size={20} className="text-[var(--clay)] mb-3" />
-              <h3 style={{ fontFamily: "'Playfair Display', serif" }} className="text-lg font-bold text-[var(--ink-primary)] mb-1">
+              <div className="w-10 h-10 rounded-xs bg-[var(--clay-subtle)] text-[var(--clay)] flex items-center justify-center mb-4">
+                <Award size={20} />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--ink-primary)] mb-1.5 tracking-tight">
                 Eksposur Brand Studio Anda
               </h3>
               <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
                 Profil studio dan portofolio Anda dipromosikan ke puluhan ribu pelanggan pecinta sustainable fashion di seluruh Indonesia.
               </p>
             </div>
-            <span className="text-[10px] font-mono text-[var(--clay)] font-semibold pt-2 border-t border-[var(--border-hairline)]">
+            <span className="text-[10px] font-mono text-[var(--clay)] font-bold pt-3 border-t border-[var(--border-hairline)] uppercase tracking-wider">
               Listing Portofolio Resmi
             </span>
-          </div>
+          </motion.div>
         </section>
 
         {/* 2. Registration Form */}
-        <section className="bg-white p-6 sm:p-10 border border-[var(--border-hairline)]">
+        <motion.section 
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.4 }}
+          className="bg-white p-6 sm:p-10 border border-[var(--border-hairline)] shadow-sm"
+        >
           <div className="max-w-md mb-6">
             <span className="label-eyebrow text-[var(--clay)]">Formulir Pendaftaran Perajin</span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl font-bold text-[var(--ink-primary)] mt-1">
+            <h2 className="text-2xl font-extrabold text-[var(--ink-primary)] mt-1 tracking-tight">
               Daftarkan Studio / Workshop Anda
             </h2>
           </div>
 
           {submitted ? (
-            <div className="p-6 bg-[var(--clay-subtle)] border border-[rgba(168,82,44,0.2)] flex flex-col gap-2">
+            <div className="p-6 bg-[var(--clay-subtle)] border border-[rgba(168,82,44,0.2)] flex flex-col gap-2 rounded-xs">
               <CheckCircle2 size={24} className="text-[var(--clay)]" />
-              <h4 className="font-serif font-bold text-base text-[var(--clay)]">Pendaftaran Berhasil Dikirim!</h4>
+              <h4 className="font-bold text-base text-[var(--clay)]">Pendaftaran Berhasil Dikirim</h4>
               <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
                 Kurator kami akan meninjau portofolio Anda ({workshopName}) dan menghubungi {whatsapp} untuk proses verifikasi kurasi karya.
               </p>
@@ -178,20 +217,24 @@ export default function PartnerArtisanPage() {
               <div>
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1.5">Keahlian & Teknik Spesialisasi</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {availableSpecialties.map(s => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => toggleSpec(s)}
-                      className={`text-xs px-2.5 py-1 border transition-colors cursor-pointer ${
-                        specialties.includes(s)
-                          ? 'bg-[var(--clay)] text-white border-[var(--clay)]'
-                          : 'bg-white text-gray-600 border-[var(--border-hairline)] hover:border-gray-400'
-                      }`}
-                    >
-                      {specialties.includes(s) ? '✓ ' : ''}{s}
-                    </button>
-                  ))}
+                  {availableSpecialties.map(s => {
+                    const isSelected = specialties.includes(s);
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => toggleSpec(s)}
+                        className={`text-xs px-2.5 py-1 border transition-colors cursor-pointer flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-[var(--clay)] text-white border-[var(--clay)]'
+                            : 'bg-white text-gray-600 border-[var(--border-hairline)] hover:border-gray-400'
+                        }`}
+                      >
+                        {isSelected && <Check size={11} />}
+                        <span>{s}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -230,7 +273,7 @@ export default function PartnerArtisanPage() {
               </button>
             </form>
           )}
-        </section>
+        </motion.section>
 
       </div>
     </div>

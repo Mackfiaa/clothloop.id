@@ -1,202 +1,325 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/lib/store';
 import { formatRupiah, formatNumber } from '@/lib/utils';
-import { X, Trash2, ShoppingBag, Droplets, Wind, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { X, Trash2, ShoppingBag, Droplets, Wind, ArrowRight, CheckCircle2, ShieldCheck, CheckSquare, Square } from 'lucide-react';
+import { CheckoutModal } from '@/components/craft/CheckoutModal';
+import { CraftOrderItem } from '@/lib/types';
 
 export function CartDrawer() {
-  const { isCartOpen, setIsCartOpen, cart, updateCartQuantity, removeFromCart, clearCart, addNotification } = useApp();
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  const { isCartOpen, setIsCartOpen, cart, updateCartQuantity, removeFromCart, addNotification, currentUser } = useApp();
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
 
-  if (!isCartOpen) return null;
+  // Sync selected items when cart changes
+  useEffect(() => {
+    const currentIds = cart.map((c) => c.item.id);
+    setSelectedItemIds((prev) => {
+      // Keep existing selections that are still in cart, and add new ones by default
+      const filtered = prev.filter((id) => currentIds.includes(id));
+      const newlyAdded = currentIds.filter((id) => !prev.includes(id));
+      return [...filtered, ...newlyAdded];
+    });
+  }, [cart]);
 
-  const subtotal = cart.reduce((a, c) => a + c.item.price * c.quantity, 0);
-  const totalWater = cart.reduce((a, c) => a + c.item.waterSavedLiters * c.quantity, 0);
-  const totalCo2 = cart.reduce((a, c) => a + c.item.co2SavedKg * c.quantity, 0);
-  const shipping = subtotal > 0 ? 15000 : 0;
-  const total = subtotal + shipping;
-
-  const handleCheckout = () => {
-    setIsCheckingOut(true);
-    setTimeout(() => {
-      clearCart();
-      setIsCheckingOut(false);
-      setIsComplete(true);
-      addNotification('success', 'Pesanan berhasil', 'Dana ditahan escrow. Penjual akan segera mengirmkan paketmu.');
-    }, 1600);
+  const toggleSelectItem = (id: string) => {
+    setSelectedItemIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
 
-  const handleClose = () => { setIsCartOpen(false); setIsComplete(false); };
+  const toggleSelectAll = () => {
+    if (selectedItemIds.length === cart.length) {
+      setSelectedItemIds([]);
+    } else {
+      setSelectedItemIds(cart.map((c) => c.item.id));
+    }
+  };
+
+  // Selected items list & subtotal calculation (only for selected products)
+  const selectedCartEntries = useMemo(() => {
+    return cart.filter((c) => selectedItemIds.includes(c.item.id));
+  }, [cart, selectedItemIds]);
+
+  const selectedSubtotal = useMemo(() => {
+    return selectedCartEntries.reduce((acc, c) => acc + c.item.price * c.quantity, 0);
+  }, [selectedCartEntries]);
+
+  const totalWater = useMemo(() => {
+    return selectedCartEntries.reduce((acc, c) => acc + (c.item.waterSavedLiters || 0) * c.quantity, 0);
+  }, [selectedCartEntries]);
+
+  const totalCo2 = useMemo(() => {
+    return selectedCartEntries.reduce((acc, c) => acc + (c.item.co2SavedKg || 0) * c.quantity, 0);
+  }, [selectedCartEntries]);
+
+  // Convert selected items to CraftOrderItem format for CheckoutModal
+  const checkoutItems: CraftOrderItem[] = useMemo(() => {
+    return selectedCartEntries.map((c) => ({
+      id: c.item.id,
+      title: c.item.title,
+      artisanStudio: c.item.brand || 'Studio Mitra ClothLoop',
+      artisanCity: c.item.sellerCity || 'Bandung',
+      price: c.item.price,
+      quantity: c.quantity,
+      image: c.item.images[0] || 'https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=800&auto=format&fit=crop',
+    }));
+  }, [selectedCartEntries]);
+
+  const handleOpenCheckout = () => {
+    if (!currentUser) {
+      addNotification('warning', 'Masuk Diperlukan', 'Silakan masuk atau daftar terlebih dahulu untuk melakukan transaksi.');
+      setIsCartOpen(false);
+      window.location.href = '/auth/login';
+      return;
+    }
+    if (selectedCartEntries.length === 0) {
+      addNotification('warning', 'Pilih Produk', 'Pilih minimal satu produk dengan mencentang kotak untuk checkout.');
+      return;
+    }
+    setIsCheckoutModalOpen(true);
+  };
+
+  const handleClose = () => {
+    setIsCartOpen(false);
+  };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
-      {/* Overlay */}
-      <div
-        onClick={handleClose}
-        style={{ position: 'absolute', inset: 0, background: 'rgba(15,14,13,0.45)', backdropFilter: 'blur(2px)' }}
-      />
+    <>
+      <AnimatePresence>
+        {isCartOpen && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              onClick={handleClose}
+              className="fixed inset-0 bg-black/55 backdrop-blur-xs"
+            />
 
-      {/* Drawer */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: '100%',
-          maxWidth: '26rem',
-          background: 'var(--white)',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '-8px 0 48px rgba(0,0,0,0.12)',
-        }}
-      >
-        {/* Header */}
-        <div style={{ padding: '1.5rem 1.75rem', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.125rem', fontWeight: 700, color: 'var(--ink)' }}>
-              Keranjang
-            </h3>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)', marginTop: '0.125rem' }}>
-              {cart.length} item preloved
-            </p>
-          </div>
-          <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-muted)', padding: '0.25rem' }}>
-            <X size={20} strokeWidth={1.5} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 1.75rem' }}>
-
-          {isComplete ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1rem', paddingTop: '3rem' }}>
-              <CheckCircle2 size={48} style={{ color: 'var(--sage)' }} strokeWidth={1.25} />
-              <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.375rem', color: 'var(--ink)' }}>Pesanan Berhasil!</h4>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'var(--ink-muted)', lineHeight: 1.7, maxWidth: '18rem' }}>
-                Pembayaran escrow aman. Kamu akan mendapat notifikasi saat paket dikirim penjual.
-              </p>
-              {totalWater > 0 && (
-                <div style={{ background: 'var(--sage-faint)', border: '1px solid var(--sage-light)', borderRadius: '0', padding: '1rem', width: '100%', textAlign: 'left' }}>
-                  <span className="label-caps" style={{ display: 'block', marginBottom: '0.5rem' }}>Dampak belanjamu</span>
-                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'var(--forest)' }}>
-                    Hemat {formatNumber(totalWater)}L air · {totalCo2.toFixed(1)} kg CO₂
+            {/* Sliding Drawer */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+              className="relative z-10 w-full max-w-md bg-white h-full flex flex-col shadow-2xl overflow-hidden"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-[var(--border-hairline)] bg-gradient-to-r from-[var(--surface-muted)] to-white flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-[var(--ink-primary)]">
+                    Keranjang Belanja
+                  </h3>
+                  <p className="text-xs text-[var(--ink-muted)] mt-0.5 font-medium">
+                    {cart.length} produk pilihan dalam keranjang
                   </p>
                 </div>
-              )}
-              <button onClick={handleClose} className="btn-primary" style={{ width: '100%', marginTop: '0.5rem', justifyContent: 'center' }}>
-                Lanjut Belanja
-              </button>
-            </div>
-          ) : cart.length === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1rem', paddingTop: '3rem' }}>
-              <ShoppingBag size={40} strokeWidth={1} style={{ color: 'var(--ink-faint)' }} />
-              <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', color: 'var(--ink)' }}>Keranjang kosong</h4>
-              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'var(--ink-muted)', lineHeight: 1.6 }}>
-                Temukan pakaian preloved terkurasi di ClothMarket kami.
-              </p>
-              <Link href="/market" onClick={handleClose} className="btn-primary" style={{ justifyContent: 'center', marginTop: '0.5rem' }}>
-                Jelajahi Preloved
-              </Link>
-            </div>
-          ) : (
-            <>
-              {/* Eco Banner */}
-              {(totalWater > 0) && (
-                <div style={{ background: 'var(--forest)', color: 'white', padding: '0.875rem 1rem', marginBottom: '1.5rem', display: 'flex', gap: '1.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem' }}>
-                    <Droplets size={14} style={{ color: 'rgba(200,221,209,0.9)' }} />
-                    <span>{formatNumber(totalWater)} L air</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem' }}>
-                    <Wind size={14} style={{ color: 'rgba(200,221,209,0.9)' }} />
-                    <span>{totalCo2.toFixed(1)} kg CO₂</span>
-                  </div>
-                </div>
-              )}
+                <motion.button 
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleClose} 
+                  className="p-1.5 rounded-full hover:bg-gray-100 text-[var(--ink-muted)] cursor-pointer"
+                >
+                  <X size={20} />
+                </motion.button>
+              </div>
 
-              {/* Items */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                {cart.map(({ item, quantity }, i) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      display: 'flex',
-                      gap: '1rem',
-                      padding: '1.25rem 0',
-                      borderBottom: i < cart.length - 1 ? '1px solid var(--line)' : 'none',
-                    }}
-                  >
-                    <div style={{ position: 'relative', width: '5rem', height: '5rem', flexShrink: 0, overflow: 'hidden', background: 'var(--cream-deep)' }}>
-                      <Image src={item.images[0]} alt={item.title} fill className="object-cover" sizes="80px" />
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+                {!currentUser ? (
+                  <div className="flex flex-col items-center text-center gap-3.5 pt-12">
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-200 shadow-2xs">
+                      <ShoppingBag size={30} />
                     </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                      <div>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.75rem', color: 'var(--ink-muted)', marginBottom: '0.125rem' }}>{item.brand}</p>
-                        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', fontWeight: 500, color: 'var(--ink)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.title}</p>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-                        <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '0.9375rem', color: 'var(--ink)' }}>
-                          {formatRupiah(item.price)}
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid var(--line)', padding: '0.125rem 0.5rem' }}>
-                            <button onClick={() => updateCartQuantity(item.id, quantity - 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-muted)', fontFamily: "'DM Sans', sans-serif", fontSize: '1rem', lineHeight: 1, width: '1.25rem', textAlign: 'center' }}>−</button>
-                            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', fontWeight: 500, minWidth: '1rem', textAlign: 'center' }}>{quantity}</span>
-                            <button onClick={() => updateCartQuantity(item.id, quantity + 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-muted)', fontFamily: "'DM Sans', sans-serif", fontSize: '1rem', lineHeight: 1, width: '1.25rem', textAlign: 'center' }}>+</button>
-                          </div>
-                          <button onClick={() => removeFromCart(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-faint)', transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--terracotta)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-faint)')}>
-                            <Trash2 size={14} strokeWidth={1.5} />
-                          </button>
+                    <h4 className="text-lg font-bold text-[var(--ink-primary)]">
+                      Masuk untuk Melihat Keranjang
+                    </h4>
+                    <p className="text-xs text-[var(--ink-muted)] leading-relaxed max-w-xs">
+                      Silakan masuk atau daftarkan akun Anda terlebih dahulu untuk mengelola produk kerajinan dan pakaian preloved di keranjang belanja.
+                    </p>
+                    <div className="flex flex-col w-full gap-2.5 mt-4 max-w-xs">
+                      <Link
+                        href="/auth/login"
+                        onClick={handleClose}
+                        className="btn-primary justify-center text-xs py-3 rounded-xl font-bold shadow-md no-underline"
+                      >
+                        Masuk ke Akun
+                      </Link>
+                      <Link
+                        href="/auth/register"
+                        onClick={handleClose}
+                        className="btn-secondary justify-center text-xs py-3 rounded-xl font-bold bg-white no-underline"
+                      >
+                        Daftar Akun Baru
+                      </Link>
+                    </div>
+                  </div>
+                ) : cart.length === 0 ? (
+                  <div className="flex flex-col items-center text-center gap-3 pt-12">
+                    <div className="w-16 h-16 rounded-full bg-[var(--surface-muted)] text-gray-400 flex items-center justify-center">
+                      <ShoppingBag size={28} />
+                    </div>
+                    <h4 className="text-lg font-bold text-[var(--ink-primary)]">
+                      Keranjang Masih Kosong
+                    </h4>
+                    <p className="text-xs text-[var(--ink-muted)] leading-relaxed max-w-xs">
+                      Temukan aneka karya kerajinan tekstil sirkular & busana preloved terkurasi di marketplace kami.
+                    </p>
+                    <Link href="/craft" onClick={handleClose} className="btn-primary justify-center mt-2 text-xs py-2.5 px-4 font-bold">
+                      Jelajahi Produk Kerajinan
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    {/* Eco Impact Banner for selected items */}
+                    {totalWater > 0 && (
+                      <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-3 rounded-2xl flex justify-between items-center text-xs shadow-xs">
+                        <div className="flex items-center gap-1.5">
+                          <Droplets size={14} className="text-emerald-300" />
+                          <span className="font-bold">{formatNumber(totalWater)} L air terselamatkan</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Wind size={14} className="text-emerald-300" />
+                          <span className="font-bold">{totalCo2.toFixed(1)} kg CO₂e</span>
                         </div>
                       </div>
+                    )}
+
+                    {/* Select All Checkbox Bar */}
+                    <div className="flex items-center justify-between py-1.5 px-2 bg-stone-50 rounded-xl border border-stone-200/80 text-xs">
+                      <button
+                        type="button"
+                        onClick={toggleSelectAll}
+                        className="flex items-center gap-2 font-bold text-gray-700 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedItemIds.length === cart.length && cart.length > 0}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 cursor-pointer"
+                        />
+                        <span>Pilih Semua ({cart.length})</span>
+                      </button>
+                      <span className="text-[11px] text-gray-400 font-mono">
+                        {selectedItemIds.length} dipilih
+                      </span>
+                    </div>
+
+                    {/* Cart Item List with Checkboxes */}
+                    <div className="flex flex-col divide-y divide-[var(--border-hairline)]">
+                      {cart.map(({ item, quantity }) => {
+                        const isSelected = selectedItemIds.includes(item.id);
+
+                        return (
+                          <div key={item.id} className="py-3 flex gap-3 items-center">
+                            {/* Checkbox per item */}
+                            <label className="cursor-pointer shrink-0">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelectItem(item.id)}
+                                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 cursor-pointer"
+                              />
+                            </label>
+
+                            {/* Product Image */}
+                            <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-[var(--surface-muted)] shrink-0 border border-[var(--border-hairline)]">
+                              <Image src={item.images[0]} alt={item.title} fill className="object-cover" sizes="64px" />
+                            </div>
+
+                            {/* Info */}
+                            <div className="flex-1 min-w-0 flex flex-col justify-between">
+                              <div>
+                                <span className="text-[10px] text-amber-800 font-bold block truncate">
+                                  {item.brand || 'Studio Mitra'} &middot; {item.sellerCity || 'Indonesia'}
+                                </span>
+                                <h5 className="font-bold text-xs text-[var(--ink-primary)] line-clamp-1">{item.title}</h5>
+                              </div>
+
+                              <div className="flex justify-between items-center mt-1.5">
+                                <span className="font-black text-xs text-[var(--ink-primary)] font-mono">
+                                  {formatRupiah(item.price)}
+                                </span>
+
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center border border-[var(--border-hairline)] rounded-lg bg-white">
+                                    <button 
+                                      onClick={() => updateCartQuantity(item.id, quantity - 1)} 
+                                      className="px-2 py-0.5 text-xs text-gray-600 hover:text-black font-bold cursor-pointer"
+                                    >
+                                      -
+                                    </button>
+                                    <span className="px-1.5 text-xs font-bold font-mono">{quantity}</span>
+                                    <button 
+                                      onClick={() => updateCartQuantity(item.id, quantity + 1)} 
+                                      className="px-2 py-0.5 text-xs text-gray-600 hover:text-black font-bold cursor-pointer"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                  <button 
+                                    onClick={() => removeFromCart(item.id)} 
+                                    className="text-gray-400 hover:text-rose-600 p-1 cursor-pointer"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                ))}
+                )}
               </div>
-            </>
-          )}
-        </div>
 
-        {/* Footer */}
-        {!isComplete && cart.length > 0 && (
-          <div style={{ borderTop: '1px solid var(--line)', padding: '1.5rem 1.75rem', background: 'var(--white)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', marginBottom: '1.25rem' }}>
-              {[
-                ['Subtotal', formatRupiah(subtotal)],
-                ['Ongkir (eco courier)', formatRupiah(shipping)],
-                ['Proteksi Escrow', 'Gratis'],
-              ].map(([label, val]) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: "'DM Sans', sans-serif", fontSize: '0.8125rem', color: 'var(--ink-muted)' }}>
-                  <span>{label}</span>
-                  <span style={{ color: val === 'Gratis' ? 'var(--sage)' : 'var(--ink)', fontWeight: val === 'Gratis' ? 600 : 400 }}>{val}</span>
+              {/* Footer Checkout: HANYA ada Keterangan Subtotal Produk & Tombol "Checkout" */}
+              {currentUser && cart.length > 0 && (
+                <div className="p-4 sm:p-5 border-t border-[var(--border-hairline)] bg-white shadow-lg flex flex-col gap-3">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs text-gray-600 font-bold">Subtotal Produk ({selectedItemIds.length} Barang):</span>
+                    <span className="font-black text-xl text-emerald-800 font-mono">
+                      {formatRupiah(selectedSubtotal)}
+                    </span>
+                  </div>
+
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleOpenCheckout}
+                    disabled={selectedItemIds.length === 0}
+                    className={`btn-primary w-full justify-center py-3 text-xs font-extrabold shadow-md flex items-center gap-2 cursor-pointer ${
+                      selectedItemIds.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    <span>Checkout ({selectedItemIds.length} Barang)</span>
+                    <ArrowRight size={14} />
+                  </motion.button>
                 </div>
-              ))}
-              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.0625rem', color: 'var(--ink)' }}>
-                <span>Total</span>
-                <span>{formatRupiah(total)}</span>
-              </div>
-            </div>
-            <button
-              onClick={handleCheckout}
-              disabled={isCheckingOut}
-              className="btn-primary"
-              style={{ width: '100%', justifyContent: 'center', opacity: isCheckingOut ? 0.7 : 1 }}
-            >
-              {isCheckingOut ? 'Memproses...' : (
-                <>Bayar Aman (Escrow) <ArrowRight size={14} /></>
               )}
-            </button>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '0.6875rem', color: 'var(--ink-faint)', textAlign: 'center', marginTop: '0.75rem' }}>
-              Dana dilepas ke penjual setelah kamu konfirmasi terima barang
-            </p>
+            </motion.div>
           </div>
         )}
-      </div>
-    </div>
+      </AnimatePresence>
+
+      {/* Full Checkout Modal */}
+      <CheckoutModal
+        isOpen={isCheckoutModalOpen}
+        onClose={() => {
+          setIsCheckoutModalOpen(false);
+          setIsCartOpen(false);
+        }}
+        items={checkoutItems}
+        onSuccessOrder={() => {
+          // Success handled in CheckoutModal
+        }}
+      />
+    </>
   );
 }

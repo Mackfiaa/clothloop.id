@@ -8,10 +8,10 @@ import { CartDrawer } from '@/components/navigation/CartDrawer';
 import { ToastNotification } from '@/components/ui/ToastNotification';
 
 export const metadata: Metadata = {
-  title: 'ClothLoop.id — Circular Fashion Platform Indonesia',
+  title: 'ClothLoop.id — Platform Pengelolaan & Jual Beli Pakaian Bekas',
   description:
-    'Berikan nafas kedua pada pakaianmu. Donasi, preloved terkurasi, dan rework artisan lokal — satu ekosistem sirkular fashion berkelanjutan.',
-  keywords: ['preloved', 'upcycling fashion', 'sustainable fashion indonesia', 'daur ulang pakaian', 'thrift curated'],
+    'Donasikan pakaian tak terpakai, belanja produk preloved terkurasi, dan dukung karya upcycling perajin lokal Indonesia.',
+  keywords: ['preloved', 'upcycling fashion', 'daur ulang pakaian indonesia', 'donasi pakaian', 'thrift curated'],
 };
 
 export default function RootLayout({

@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/lib/store';
 import { formatNumber } from '@/lib/utils';
-import { ShoppingBag, Recycle, Menu, X, User as UserIcon, LogOut, PackageCheck, Scissors, Store, Truck } from 'lucide-react';
+import { ShoppingBag, Recycle, Menu, X, User as UserIcon, LogOut, Scissors, Store, Truck } from 'lucide-react';
 import { UserRole } from '@/lib/types';
 
 const navLinks = [
@@ -15,12 +16,12 @@ const navLinks = [
   { href: '/impact', label: 'Eco Impact' },
 ];
 
-const ROLE_LABELS: Record<UserRole, { label: string; bg: string; color: string }> = {
-  USER: { label: 'Eco-Citizen', bg: 'var(--forest-subtle)', color: 'var(--forest-deep)' },
-  SELLER: { label: 'Seller Preloved', bg: 'var(--ochre-subtle)', color: 'var(--ochre)' },
-  UMKM: { label: 'UMKM Artisan', bg: 'var(--clay-subtle)', color: 'var(--clay)' },
-  KURIR: { label: 'Mitra Kurir', bg: '#e8f0fe', color: '#1a56db' },
-  ADMIN: { label: 'Administrator', bg: '#f3f4f6', color: '#1f2937' },
+const ROLE_LABELS: Record<UserRole, { label: string; bg: string; color: string; border: string }> = {
+  USER: { label: 'Donatur', bg: 'var(--forest-subtle)', color: 'var(--emerald-vibrant)', border: 'rgba(5, 150, 105, 0.25)' },
+  SELLER: { label: 'Seller Preloved', bg: 'var(--ochre-subtle)', color: 'var(--ochre)', border: 'rgba(217, 119, 6, 0.25)' },
+  UMKM: { label: 'UMKM Artisan', bg: 'var(--clay-subtle)', color: 'var(--clay)', border: 'rgba(234, 88, 12, 0.25)' },
+  KURIR: { label: 'Mitra Kurir', bg: '#eff6ff', color: '#2563eb', border: 'rgba(37, 99, 235, 0.25)' },
+  ADMIN: { label: 'Administrator', bg: '#f3f4f6', color: '#1f2937', border: 'rgba(31, 41, 55, 0.25)' },
 };
 
 export function Navbar() {
@@ -41,11 +42,14 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  const isPortal = pathname.startsWith('/seller') || pathname.startsWith('/craftsman') || pathname.startsWith('/courier') || pathname.startsWith('/admin');
+  if (isPortal) return null;
+
   return (
     <header
-      className={`sticky top-0 z-50 w-full transition-all duration-200 ${
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
         scrolled
-          ? 'bg-[var(--surface-main)]/95 backdrop-blur-md border-b border-[var(--border-hairline)] shadow-xs'
+          ? 'bg-[var(--surface-main)]/92 backdrop-blur-md border-b border-[var(--border-hairline)] shadow-2xs'
           : 'bg-[var(--surface-main)] border-b border-[var(--border-hairline)]'
       }`}
     >
@@ -53,268 +57,199 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16 gap-4">
 
           {/* Logo */}
-          <Link href="/" className="flex items-baseline gap-1 shrink-0 no-underline">
-            <span style={{ fontFamily: "'Playfair Display', serif" }} className="text-xl font-bold text-[var(--forest-deep)] tracking-tight">
+          <Link href="/" className="flex items-baseline gap-0.5 shrink-0 no-underline group">
+            <span className="text-xl font-extrabold text-[var(--forest-deep)] tracking-tight group-hover:text-[var(--emerald-vibrant)] transition-colors">
               ClothLoop
             </span>
-            <span className="text-[11px] font-bold text-[var(--ink-muted)]">
+            <span className="text-[11px] font-bold text-[var(--emerald-bright)] font-mono">
               .id
             </span>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6">
-            {navLinks.map((l) => {
-              const active = pathname === l.href || (l.href !== '/' && pathname.startsWith(l.href));
-              return (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className={`text-xs font-medium tracking-wide transition-colors no-underline py-1 border-b-2 ${
-                    active
-                      ? 'text-[var(--forest-deep)] border-[var(--forest-deep)] font-semibold'
-                      : 'text-[var(--ink-secondary)] border-transparent hover:text-[var(--ink-primary)]'
-                  }`}
-                >
-                  {l.label}
-                </Link>
-              );
-            })}
-          </nav>
-
           {/* Right Section: Auth & Cart Actions */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
 
-            {/* User Dropdown / Auth Buttons */}
+            {/* User ClothPoints Badge (Always Visible, 0 Pts when not logged in) */}
+            <Link
+              href="/impact"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 border border-amber-300/90 rounded-full text-amber-800 transition-all no-underline shadow-2xs group"
+              title={currentUser ? "ClothPoints Anda" : "ClothPoints (0 Pts - Masuk untuk melihat saldo)"}
+            >
+              <span className="w-4 h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px] font-black group-hover:scale-110 transition-transform shadow-2xs font-mono">
+                P
+              </span>
+              <span className="text-[11px] sm:text-xs font-black font-mono tracking-tight text-amber-900 flex items-center gap-0.5">
+                {formatNumber(currentUser ? userPoints : 0)} <span className="text-[9px] sm:text-[10px] font-bold text-amber-700">Pts</span>
+              </span>
+            </Link>
+
+            {/* Cart Trigger with Bounce Badge */}
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              type="button"
+              onClick={() => setIsCartOpen(true)}
+              aria-label="Keranjang Belanja"
+              className="relative p-2 text-[var(--ink-primary)] hover:text-[var(--emerald-vibrant)] cursor-pointer bg-white border border-[var(--border-hairline)] rounded-full shadow-2xs flex items-center justify-center transition-colors"
+            >
+              <ShoppingBag size={16} strokeWidth={2} />
+              {totalItems > 0 && (
+                <motion.span 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[var(--emerald-vibrant)] text-white text-[9px] font-extrabold flex items-center justify-center font-mono shadow-xs"
+                >
+                  {totalItems}
+                </motion.span>
+              )}
+            </motion.button>
+
+            {/* User Dropdown / Single Auth Buttons */}
             {currentUser ? (
               <div className="relative">
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
                   type="button"
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 border border-[var(--border-hairline)] bg-white text-xs text-[var(--ink-primary)] font-medium cursor-pointer hover:border-gray-400 transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 border border-[var(--border-hairline)] bg-white rounded-full text-xs text-[var(--ink-primary)] font-medium cursor-pointer shadow-2xs hover:border-[var(--emerald-vibrant)] transition-colors"
                 >
-                  <span className="w-5 h-5 rounded-full bg-[var(--forest-deep)] text-white flex items-center justify-center text-[10px] font-bold">
+                  <span className="w-5 h-5 rounded-full bg-[var(--emerald-vibrant)] text-white flex items-center justify-center text-[10px] font-bold">
                     {displayName.charAt(0).toUpperCase()}
                   </span>
-                  <span className="hidden sm:inline max-w-[100px] truncate">
+                  <span className="hidden sm:inline max-w-[100px] truncate font-bold text-xs">
                     {displayName}
                   </span>
                   <span
-                    className="text-[9px] font-semibold px-1.5 py-0.5 rounded-xs uppercase tracking-wider"
-                    style={{ backgroundColor: roleConfig.bg, color: roleConfig.color }}
+                    className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border"
+                    style={{ backgroundColor: roleConfig.bg, color: roleConfig.color, borderColor: roleConfig.border }}
                   >
                     {roleConfig.label}
                   </span>
-                </button>
+                </motion.button>
 
-                {/* Dropdown Menu */}
-                {userDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-56 bg-white border border-[var(--border-hairline)] shadow-lg z-50 flex flex-col">
-                    <div className="p-3 border-b border-[var(--border-hairline)] bg-[var(--surface-muted)]">
-                      <div className="flex justify-between items-start gap-1">
-                        <p className="font-bold text-xs text-[var(--ink-primary)] truncate">{displayName}</p>
-                        <span
-                          className="text-[9px] font-bold px-1.5 py-0.2 rounded-xs uppercase tracking-wider"
-                          style={{ backgroundColor: roleConfig.bg, color: roleConfig.color }}
-                        >
-                          {role}
-                        </span>
+                {/* Animated Dropdown Menu */}
+                <AnimatePresence>
+                  {userDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                      className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl border border-[var(--border-hairline)] shadow-xl z-50 flex flex-col overflow-hidden"
+                    >
+                      <div className="p-4 border-b border-[var(--border-hairline)] bg-[var(--surface-muted)]">
+                        <div className="flex justify-between items-start gap-1">
+                          <p className="font-bold text-xs text-[var(--ink-primary)] truncate">{displayName}</p>
+                          <span
+                            className="text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider border"
+                            style={{ backgroundColor: roleConfig.bg, color: roleConfig.color, borderColor: roleConfig.border }}
+                          >
+                            {role}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[var(--ink-muted)] truncate mt-0.5">{currentUser.email}</p>
+                        {userProfile?.business_name && (
+                          <p className="text-[10px] text-[var(--emerald-vibrant)] font-bold mt-1 truncate flex items-center gap-1">
+                            <Store size={10} className="shrink-0" /> {userProfile.business_name}
+                          </p>
+                        )}
+                        <div className="mt-2 pt-2 border-t border-[var(--border-hairline)] flex justify-between items-center text-[10px]">
+                          <span className="text-gray-500 font-medium">ClothPoints:</span>
+                          <strong className="text-[var(--ochre)] font-mono text-xs font-bold">+{formatNumber(userPoints)} Pts</strong>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-[var(--ink-muted)] truncate mt-0.5">{currentUser.email}</p>
-                      {userProfile?.business_name && (
-                        <p className="text-[10px] text-[var(--forest-deep)] font-semibold mt-1 truncate">
-                          🏢 {userProfile.business_name}
-                        </p>
+
+                      <Link
+                        href="/impact"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2 p-3 text-xs text-[var(--ink-primary)] hover:bg-[var(--forest-subtle)] border-b border-[var(--border-hairline)] no-underline transition-colors font-semibold"
+                      >
+                        <UserIcon size={13} className="text-[var(--emerald-vibrant)]" />
+                        <span>Portofolio Dampak & Poin</span>
+                      </Link>
+
+                      {role === 'SELLER' && (
+                        <Link
+                          href="/seller"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center gap-2 p-3 text-xs text-[var(--ink-primary)] hover:bg-amber-50/60 border-b border-[var(--border-hairline)] no-underline transition-colors font-semibold"
+                        >
+                          <Store size={13} className="text-amber-600" />
+                          <span>Portal Dashboard Seller</span>
+                        </Link>
                       )}
-                    </div>
 
-                    <Link
-                      href="/impact"
-                      onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2 p-3 text-xs text-[var(--ink-primary)] hover:bg-gray-50 border-b border-[var(--border-hairline)] no-underline"
-                    >
-                      <UserIcon size={13} className="text-[var(--forest-deep)]" />
-                      <span>Portofolio Dampak & Poin</span>
-                    </Link>
+                      {role === 'UMKM' && (
+                        <Link
+                          href="/craftsman"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center gap-2 p-3 text-xs text-[var(--ink-primary)] hover:bg-emerald-50/60 border-b border-[var(--border-hairline)] no-underline transition-colors font-semibold"
+                        >
+                          <Scissors size={13} className="text-emerald-600" />
+                          <span>Portal Studio Perajin</span>
+                        </Link>
+                      )}
 
-                    {/* Role-tailored shortcut links */}
-                    {role === 'SELLER' && (
-                      <Link
-                        href="/market"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2 p-3 text-xs text-[var(--ink-primary)] hover:bg-gray-50 border-b border-[var(--border-hairline)] no-underline"
+                      {role === 'KURIR' && (
+                        <Link
+                          href="/courier"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center gap-2 p-3 text-xs text-[var(--ink-primary)] hover:bg-blue-50/60 border-b border-[var(--border-hairline)] no-underline transition-colors font-semibold"
+                        >
+                          <Truck size={13} className="text-blue-600" />
+                          <span>Portal Mitra Kurir Jemput</span>
+                        </Link>
+                      )}
+
+                      {role === 'ADMIN' && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="flex items-center gap-2 p-3 text-xs text-[var(--ink-primary)] hover:bg-stone-100 border-b border-[var(--border-hairline)] no-underline transition-colors font-semibold"
+                        >
+                          <Store size={13} className="text-stone-800" />
+                          <span>Master Admin Control</span>
+                        </Link>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setUserDropdownOpen(false);
+                          await signOut();
+                        }}
+                        className="flex items-center gap-2 p-3 text-xs text-rose-600 hover:bg-rose-50 text-left cursor-pointer border-none bg-transparent transition-colors font-bold"
                       >
-                        <Store size={13} className="text-[var(--ochre)]" />
-                        <span>Katalog & Penjualan Saya</span>
-                      </Link>
-                    )}
-
-                    {role === 'UMKM' && (
-                      <Link
-                        href="/craft"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2 p-3 text-xs text-[var(--ink-primary)] hover:bg-gray-50 border-b border-[var(--border-hairline)] no-underline"
-                      >
-                        <Scissors size={13} className="text-[var(--clay)]" />
-                        <span>Kelola Antrean Rework</span>
-                      </Link>
-                    )}
-
-                    {role === 'KURIR' && (
-                      <Link
-                        href="/drop"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2 p-3 text-xs text-[var(--ink-primary)] hover:bg-gray-50 border-b border-[var(--border-hairline)] no-underline"
-                      >
-                        <Truck size={13} className="text-blue-600" />
-                        <span>Jadwal Penjemputan Donasi</span>
-                      </Link>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setUserDropdownOpen(false);
-                        await signOut();
-                      }}
-                      className="flex items-center gap-2 p-3 text-xs text-[var(--clay)] hover:bg-red-50 text-left cursor-pointer border-none bg-transparent"
-                    >
-                      <LogOut size={13} />
-                      <span>Keluar Akun</span>
-                    </button>
-                  </div>
-                )}
+                        <LogOut size={13} />
+                        <span>Keluar Akun</span>
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
-              <div className="hidden sm:flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Link
                   href="/auth/login"
-                  className="text-xs font-medium text-[var(--ink-primary)] hover:text-[var(--forest-deep)] px-2.5 py-1.5 no-underline"
+                  className="text-xs font-bold text-[var(--ink-primary)] hover:text-emerald-700 px-3 py-1.5 transition-colors no-underline"
                 >
                   Masuk
                 </Link>
                 <Link
                   href="/auth/register"
-                  className="btn-secondary text-xs py-1.5 px-3 uppercase tracking-wider"
+                  className="btn-primary text-xs py-1.5 px-3.5 rounded-full font-bold shadow-xs no-underline"
                 >
                   Daftar
                 </Link>
               </div>
             )}
-
-            {/* Cart Trigger */}
-            <button
-              type="button"
-              onClick={() => setIsCartOpen(true)}
-              aria-label="Keranjang Belanja"
-              className="relative p-2 text-[var(--ink-primary)] hover:text-[var(--forest-deep)] cursor-pointer bg-transparent border-none flex items-center justify-center"
-            >
-              <ShoppingBag size={18} strokeWidth={1.75} />
-              {totalItems > 0 && (
-                <span className="absolute top-1 right-0 w-4 h-4 rounded-full bg-[var(--forest-deep)] text-white text-[9px] font-bold flex items-center justify-center font-mono">
-                  {totalItems}
-                </span>
-              )}
-            </button>
-
-            {/* CTA Drop Button (Desktop) */}
-            <Link
-              href="/drop"
-              className="hidden lg:flex btn-primary text-xs py-1.5 px-3"
-            >
-              <Recycle size={13} />
-              Drop Pakaian
-            </Link>
-
-            {/* Mobile Hamburger Button */}
-            <button
-              type="button"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden p-1.5 text-[var(--ink-primary)] cursor-pointer bg-transparent border-none"
-              aria-label="Toggle Menu"
-            >
-              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
 
           </div>
 
         </div>
       </div>
-
-      {/* Mobile Menu Overlay Drawer */}
-      {mobileOpen && (
-        <div className="md:hidden bg-[var(--surface-main)] border-t border-[var(--border-hairline)] px-5 py-6 flex flex-col gap-5 shadow-lg">
-          
-          {/* User Section on Mobile */}
-          <div className="pb-4 border-b border-[var(--border-hairline)]">
-            {currentUser ? (
-              <div className="flex justify-between items-center">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p style={{ fontFamily: "'Playfair Display', serif" }} className="font-bold text-base text-[var(--ink-primary)]">{displayName}</p>
-                    <span
-                      className="text-[9px] font-bold px-1.5 py-0.5 rounded-xs uppercase tracking-wider"
-                      style={{ backgroundColor: roleConfig.bg, color: roleConfig.color }}
-                    >
-                      {roleConfig.label}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[var(--forest-deep)] font-semibold font-mono">{formatNumber(userPoints)} Poin</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setMobileOpen(false);
-                    await signOut();
-                  }}
-                  className="text-xs text-[var(--clay)] font-semibold cursor-pointer bg-transparent border-none"
-                >
-                  Keluar
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <Link
-                  href="/auth/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="btn-secondary text-xs py-2 justify-center"
-                >
-                  Masuk
-                </Link>
-                <Link
-                  href="/auth/register"
-                  onClick={() => setMobileOpen(false)}
-                  className="btn-primary text-xs py-2 justify-center"
-                >
-                  Daftar
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Navigation Links on Mobile */}
-          <nav className="flex flex-col gap-1">
-            {navLinks.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                onClick={() => setMobileOpen(false)}
-                className="text-lg font-bold font-serif text-[var(--ink-primary)] hover:text-[var(--forest-deep)] py-2.5 border-b border-[var(--border-hairline)] last:border-b-0 no-underline"
-              >
-                {l.label}
-              </Link>
-            ))}
-          </nav>
-
-          <Link
-            href="/drop"
-            onClick={() => setMobileOpen(false)}
-            className="btn-primary justify-center text-xs py-3 w-full mt-2"
-          >
-            <Recycle size={14} /> Serahkan Pakaian Sekarang
-          </Link>
-        </div>
-      )}
     </header>
   );
 }
+

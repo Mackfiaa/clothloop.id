@@ -2,8 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { Store, MapPin, CheckCircle2, Send, Building2, Coffee, ShieldCheck } from 'lucide-react';
 import { useApp } from '@/lib/store';
+import { BackgroundDecor } from '@/components/ui/BackgroundDecor';
+import { submitNewDropBoxApplication } from '@/lib/supabase/portalData';
 
 export default function PartnerDropBoxPage() {
   const { addNotification } = useApp();
@@ -17,89 +20,139 @@ export default function PartnerDropBoxPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addNotification('success', 'Pendaftaran Mitra Diterima!', `Tim ClothLoop akan menghubungi ${contactName} (${partnerName}) dalam 1-2 hari kerja.`);
+    submitNewDropBoxApplication({
+      businessName: partnerName.trim(),
+      businessType: category,
+      city: cityName,
+      address: address.trim(),
+      picName: contactName.trim(),
+      picPhone: contactPhone.trim(),
+      picEmail: '-',
+    });
+    addNotification(
+      'success',
+      'Pendaftaran Mitra Diterima',
+      `Pengajuan titik drop-box ${partnerName} (${cityName}) berhasil dikirim ke Admin untuk dijadwalkan survei.`
+    );
     setSubmitted(true);
   };
 
   return (
-    <div className="overflow-x-hidden">
+    <div className="relative overflow-x-hidden">
 
       {/* Header */}
-      <div className="bg-[var(--surface-muted)] border-b border-[var(--border-hairline)] py-12 sm:py-16">
-        <div className="container-site">
-          <span className="label-eyebrow text-[var(--forest-deep)] block mb-1">Kemitraan Drop-Box</span>
-          <h1 style={{ fontFamily: "'Playfair Display', serif" }} className="text-3xl sm:text-5xl font-bold text-[var(--ink-primary)] leading-tight max-w-2xl">
-            Jadikan Lokasi Anda Titik Kumpul Sirkular.
-          </h1>
-          <p className="text-xs sm:text-sm text-[var(--ink-secondary)] mt-2 max-w-xl leading-relaxed">
-            Bergabunglah dengan 68+ kafe, pusat perbelanjaan, dan ruang publik yang menyediakan kotak pengumpulan donasi pakaian ramah lingkungan.
-          </p>
+      <div className="relative bg-[var(--surface-muted)] border-b border-[var(--border-hairline)] py-14 sm:py-20 overflow-hidden">
+        <BackgroundDecor variant="default" />
+        <div className="container-site relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <span className="label-eyebrow text-[var(--forest-deep)] block mb-1.5">Kemitraan Drop-Box</span>
+            <h1 className="text-3xl sm:text-5xl font-extrabold text-[var(--ink-primary)] leading-tight max-w-2xl tracking-tight">
+              Jadikan Lokasi Anda Titik Kumpul Sirkular.
+            </h1>
+            <p className="text-xs sm:text-sm text-[var(--ink-secondary)] mt-2.5 max-w-xl leading-relaxed">
+              Bergabunglah dengan 180+ kafe, pusat perbelanjaan, dan ruang publik yang menyediakan kotak pengumpulan donasi pakaian ramah lingkungan.
+            </p>
+          </motion.div>
         </div>
       </div>
 
-      <div className="container-site py-10 sm:py-16 flex flex-col gap-12">
+      <div className="container-site py-12 sm:py-16 flex flex-col gap-12">
 
         {/* 1. Benefit Cards */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="card-clean p-6 flex flex-col justify-between gap-3">
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.4 }}
+            className="card-clean p-6 sm:p-7 flex flex-col justify-between gap-4"
+          >
             <div>
-              <Coffee size={20} className="text-[var(--forest-deep)] mb-3" />
-              <h3 style={{ fontFamily: "'Playfair Display', serif" }} className="text-lg font-bold text-[var(--ink-primary)] mb-1">
+              <div className="w-10 h-10 rounded-xs bg-[var(--forest-subtle)] text-[var(--forest-deep)] flex items-center justify-center mb-4">
+                <Coffee size={20} />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--ink-primary)] mb-1.5 tracking-tight">
                 Tingkatkan Traffic Pengunjung
               </h3>
               <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
                 Ribuan donatur aktif mengunjungi lokasi mitra untuk menyerahkan pakaian dan sering kali berbelanja atau menikmati hidangan di tempat Anda.
               </p>
             </div>
-            <span className="text-[10px] font-mono text-[var(--forest-deep)] font-semibold pt-2 border-t border-[var(--border-hairline)]">
+            <span className="text-[10px] font-mono text-[var(--forest-deep)] font-bold pt-3 border-t border-[var(--border-hairline)] uppercase tracking-wider">
               +15-25% Kunjungan Baru
             </span>
-          </div>
+          </motion.div>
 
-          <div className="card-clean p-6 flex flex-col justify-between gap-3">
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="card-clean p-6 sm:p-7 flex flex-col justify-between gap-4"
+          >
             <div>
-              <ShieldCheck size={20} className="text-[var(--forest-deep)] mb-3" />
-              <h3 style={{ fontFamily: "'Playfair Display', serif" }} className="text-lg font-bold text-[var(--ink-primary)] mb-1">
+              <div className="w-10 h-10 rounded-xs bg-[var(--forest-subtle)] text-[var(--forest-deep)] flex items-center justify-center mb-4">
+                <ShieldCheck size={20} />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--ink-primary)] mb-1.5 tracking-tight">
                 Sertifikat Hijau & Dampak Nyata
               </h3>
               <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
                 Lokasi Anda mendapatkan laporan berkala total kg tekstil yang berhasil diselamatkan dan sertifikat keberlanjutan resmi.
               </p>
             </div>
-            <span className="text-[10px] font-mono text-[var(--forest-deep)] font-semibold pt-2 border-t border-[var(--border-hairline)]">
+            <span className="text-[10px] font-mono text-[var(--forest-deep)] font-bold pt-3 border-t border-[var(--border-hairline)] uppercase tracking-wider">
               Laporan Dampak Bulanan
             </span>
-          </div>
+          </motion.div>
 
-          <div className="card-clean p-6 flex flex-col justify-between gap-3">
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="card-clean p-6 sm:p-7 flex flex-col justify-between gap-4"
+          >
             <div>
-              <Building2 size={20} className="text-[var(--forest-deep)] mb-3" />
-              <h3 style={{ fontFamily: "'Playfair Display', serif" }} className="text-lg font-bold text-[var(--ink-primary)] mb-1">
+              <div className="w-10 h-10 rounded-xs bg-[var(--forest-subtle)] text-[var(--forest-deep)] flex items-center justify-center mb-4">
+                <Building2 size={20} />
+              </div>
+              <h3 className="text-lg font-bold text-[var(--ink-primary)] mb-1.5 tracking-tight">
                 Fasilitas Drop-Box Gratis
               </h3>
               <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
                 ClothLoop menyediakan unit kotak pengumpulan berdesain estetik minimalis beserta timbangan dan materi edukasi tanpa biaya sewa.
               </p>
             </div>
-            <span className="text-[10px] font-mono text-[var(--forest-deep)] font-semibold pt-2 border-t border-[var(--border-hairline)]">
+            <span className="text-[10px] font-mono text-[var(--forest-deep)] font-bold pt-3 border-t border-[var(--border-hairline)] uppercase tracking-wider">
               Instalasi & Pengambilan Rutin
             </span>
-          </div>
+          </motion.div>
         </section>
 
         {/* 2. Registration Form */}
-        <section className="bg-white p-6 sm:p-10 border border-[var(--border-hairline)]">
+        <motion.section 
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.4 }}
+          className="bg-white p-6 sm:p-10 border border-[var(--border-hairline)] shadow-sm"
+        >
           <div className="max-w-md mb-6">
             <span className="label-eyebrow text-[var(--forest-deep)]">Formulir Pendaftaran Lokasi</span>
-            <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-2xl font-bold text-[var(--ink-primary)] mt-1">
+            <h2 className="text-2xl font-extrabold text-[var(--ink-primary)] mt-1 tracking-tight">
               Daftarkan Usaha / Lokasi Anda
             </h2>
           </div>
 
           {submitted ? (
-            <div className="p-6 bg-[var(--forest-subtle)] border border-[rgba(27,54,40,0.2)] flex flex-col gap-2">
+            <div className="p-6 bg-[var(--forest-subtle)] border border-[rgba(27,54,40,0.2)] flex flex-col gap-2 rounded-xs">
               <CheckCircle2 size={24} className="text-[var(--forest-deep)]" />
-              <h4 className="font-serif font-bold text-base text-[var(--forest-deep)]">Pendaftaran Berhasil Dikirim!</h4>
+              <h4 className="font-bold text-base text-[var(--forest-deep)]">Pendaftaran Berhasil Dikirim</h4>
               <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
                 Tim kemitraan ClothLoop akan meninjau lokasi Anda ({partnerName}, {cityName}) dan menghubungi nomor WhatsApp {contactPhone} untuk jadwal survei dan instalasi drop box.
               </p>
@@ -203,7 +256,7 @@ export default function PartnerDropBoxPage() {
               </button>
             </form>
           )}
-        </section>
+        </motion.section>
 
       </div>
     </div>

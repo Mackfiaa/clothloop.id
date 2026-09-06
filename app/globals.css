@@ -1,55 +1,64 @@
 @import "tailwindcss";
-@import "@fontsource/dm-sans/300.css";
-@import "@fontsource/dm-sans/400.css";
-@import "@fontsource/dm-sans/500.css";
-@import "@fontsource/dm-sans/600.css";
-@import "@fontsource/playfair-display/400.css";
-@import "@fontsource/playfair-display/400-italic.css";
-@import "@fontsource/playfair-display/600.css";
-@import "@fontsource/playfair-display/700.css";
+@import "@fontsource/plus-jakarta-sans/300.css";
+@import "@fontsource/plus-jakarta-sans/400.css";
+@import "@fontsource/plus-jakarta-sans/500.css";
+@import "@fontsource/plus-jakarta-sans/600.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
+@import "@fontsource/plus-jakarta-sans/800.css";
+@import "@fontsource/instrument-serif/400.css";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource/playfair-display/index.css";
 @import "leaflet/dist/leaflet.css";
 
 @layer base {
   :root {
-    /* Natural Stone & Paper Canvas */
-    --cream:           #faf8f5;
-    --cream-deep:      #f3efe8;
-    --cream-darker:    #e8e3d8;
+    /* Pure Natural Editorial Canvas */
+    --cream:           #fbfbf9;
+    --cream-deep:      #f4f3ef;
+    --cream-darker:    #e8e7e1;
     --white:           #ffffff;
 
-    --surface-main:    #faf8f5;
+    --surface-main:    #fbfbf9;
     --surface-card:    #ffffff;
-    --surface-muted:   #f3efe8;
-    --surface-dark:    #181716;
+    --surface-muted:   #f4f3ef;
+    --surface-dark:    #0f1412;
 
-    /* High-Contrast Typography Inks */
-    --ink:             #191817;
-    --ink-primary:     #191817;
-    --ink-secondary:   #4a4742;
-    --ink-muted:       #757169;
-    --ink-faint:       #aba69d;
+    /* Deep High-Contrast Editorial Inks */
+    --ink:             #111614;
+    --ink-primary:     #111614;
+    --ink-secondary:   #46524d;
+    --ink-muted:       #718079;
+    --ink-faint:       #a3b0a9;
 
-    /* Botanical Forest */
-    --forest:          #1b3628;
-    --forest-deep:     #1b3628;
-    --forest-subtle:   #ebf2ee;
-    --sage:            #38614a;
-    --sage-light:      #c2dbce;
-    --sage-faint:      #eaf3ee;
+    /* Energetic Fresh Forest & Emerald */
+    --forest:          #054e3b;
+    --forest-deep:     #054e3b;
+    --forest-subtle:   #ecfdf5;
+    --emerald-vibrant: #059669;
+    --emerald-bright:  #10b981;
+    --emerald-glow:    rgba(16, 185, 129, 0.12);
+    --sage:            #047857;
+    --sage-light:      #a7f3d0;
+    --sage-faint:      #ecfdf5;
 
-    /* Accents (Restrained) */
-    --terracotta:      #a8522c;
-    --clay:            #a8522c;
-    --clay-subtle:     #f8eee8;
-    --golden:          #8c6d2d;
-    --ochre:           #8c6d2d;
-    --ochre-subtle:    #f7f2e6;
+    /* Energetic Amber & Warm Accent */
+    --golden:          #d97706;
+    --ochre:           #d97706;
+    --ochre-bright:    #f59e0b;
+    --ochre-subtle:    #fffbeb;
+    --amber-glow:      rgba(245, 158, 11, 0.12);
 
-    /* Hairline Structural Borders */
-    --line:            #e6e2d8;
-    --line-strong:     #c8c3b8;
-    --border-hairline: #e6e2d8;
-    --border-strong:   #c8c3b8;
+    /* Coral & Craft Flame */
+    --terracotta:      #ea580c;
+    --clay:            #ea580c;
+    --clay-bright:     #f97316;
+    --clay-subtle:     #fff7ed;
+
+    /* Hairline Crisp Structural Borders */
+    --line:            #e4e8e5;
+    --line-strong:     #ced6d1;
+    --border-hairline: #e4e8e5;
+    --border-strong:   #ced6d1;
   }
 
   *, *::before, *::after {
@@ -66,36 +75,53 @@
   body {
     background-color: var(--surface-main);
     color: var(--ink-primary);
-    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 400;
-    line-height: 1.6;
+    line-height: 1.55;
+    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5 {
-    font-family: 'Playfair Display', Georgia, serif;
-    line-height: 1.15;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    line-height: 1.12;
     color: var(--ink-primary);
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  .font-editorial {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .font-serif {
+    font-family: 'Playfair Display', 'Instrument Serif', Georgia, serif;
   }
 
   ::selection {
-    background: var(--forest-subtle);
-    color: var(--forest-deep);
+    background: #a7f3d0;
+    color: #064e3b;
   }
 }
 
 /* ── Typography Helpers ── */
 .label-eyebrow, .label-caps {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--ink-muted);
+  letter-spacing: 0.1em;
+  color: var(--emerald-vibrant);
 }
 
 .mono-num, .font-mono-code {
@@ -106,7 +132,7 @@
 /* ── Responsive Layout Containers ── */
 .container-site, .container-editorial {
   width: 100%;
-  max-width: 1240px;
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
   padding-left: 1.25rem;
@@ -122,55 +148,67 @@
 
 @media (min-width: 1024px) {
   .container-site, .container-editorial {
-    padding-left: 3rem;
-    padding-right: 3rem;
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
   }
 }
 
-/* ── Buttons (Human Minimalist) ── */
+/* ── Buttons (Human Minimalist & Crisp) ── */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: var(--forest-deep);
+  background-color: var(--emerald-vibrant);
   color: #ffffff;
-  padding: 0.75rem 1.5rem;
-  font-family: 'DM Sans', sans-serif;
+  padding: 0.65rem 1.25rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   text-decoration: none;
-  border: 1px solid var(--forest-deep);
-  border-radius: 0;
+  border: 1px solid var(--emerald-vibrant);
+  border-radius: 9999px;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.18);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .btn-primary:hover {
-  background-color: var(--surface-dark);
-  border-color: var(--surface-dark);
+  background-color: var(--forest-deep);
+  border-color: var(--forest-deep);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+  transform: translateY(-1px);
+}
+.btn-primary:active {
+  transform: scale(0.98);
 }
 
 .btn-secondary {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: transparent;
+  background-color: #ffffff;
   color: var(--ink-primary);
-  padding: 0.75rem 1.5rem;
-  font-family: 'DM Sans', sans-serif;
+  padding: 0.65rem 1.25rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   text-decoration: none;
   border: 1px solid var(--border-hairline);
-  border-radius: 0;
+  border-radius: 9999px;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .btn-secondary:hover {
-  background-color: var(--ink-primary);
+  background-color: #ffffff;
   border-color: var(--ink-primary);
-  color: #ffffff;
+  color: var(--ink-primary);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+.btn-secondary:active {
+  transform: scale(0.98);
 }
 
 /* ── Input Styling ── */
@@ -178,16 +216,17 @@
   width: 100%;
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--border-hairline);
+  border-bottom: 1.5px solid var(--border-hairline);
   padding: 0.625rem 0;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.875rem;
+  font-weight: 500;
   color: var(--ink-primary);
   outline: none;
-  transition: border-color 0.15s;
+  transition: all 0.2s ease;
 }
 .input-minimal:focus, .input-underline:focus {
-  border-bottom-color: var(--forest-deep);
+  border-bottom-color: var(--emerald-vibrant);
 }
 
 /* ── Touch Smooth Scroll ── */
@@ -200,12 +239,37 @@
   display: none;
 }
 
-/* ── Restrained Cards ── */
+/* ── Dynamic Cards ── */
 .card-clean, .pillar-card {
   background-color: var(--surface-card);
   border: 1px solid var(--border-hairline);
-  transition: border-color 0.15s ease;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .card-clean:hover, .pillar-card:hover {
-  border-color: var(--border-strong);
+  border-color: var(--emerald-vibrant);
+  box-shadow: 0 8px 24px rgba(5, 150, 105, 0.08);
+  transform: translateY(-3px);
+}
+
+.mesh-gradient-hero {
+  background-image: 
+    radial-gradient(circle at 10% 15%, rgba(16, 185, 129, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(245, 158, 11, 0.05) 0%, transparent 40%);
+}
+
+/* ── Hide Next.js Dev Badge & Indicators ── */
+[data-nextjs-toast],
+[data-nextjs-indicator],
+[data-next-dev-overlay],
+nextjs-portal,
+#nextjs-dev-tools,
+#__next-build-watcher,
+div[class*="next-dev-overlay"],
+div[data-nextjs-dialog-overlay] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
 }

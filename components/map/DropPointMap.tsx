@@ -3,12 +3,14 @@
 import React, { useEffect, useRef } from 'react';
 import { DropPoint } from '@/lib/types';
 import L from 'leaflet';
+import { Globe, MapPin } from 'lucide-react';
 
 interface DropPointMapProps {
   points: DropPoint[];
   selectedPointId?: string;
   onSelectPoint?: (id: string) => void;
   height?: string;
+  autoFitAll?: boolean;
 }
 
 export function DropPointMap({
@@ -16,19 +18,22 @@ export function DropPointMap({
   selectedPointId,
   onSelectPoint,
   height = '340px',
+  autoFitAll = true,
 }: DropPointMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  const boundsRef = useRef<L.LatLngBounds | null>(null);
 
   // Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
     if (mapInstanceRef.current) return;
 
-    const initialLat = -6.8;
-    const initialLng = 108.8;
-    const initialZoom = 6;
+    // Center of Indonesia archipelago
+    const initialLat = -2.5;
+    const initialLng = 118.0;
+    const initialZoom = 5;
 
     const map = L.map(mapContainerRef.current, {
       center: [initialLat, initialLng],
@@ -70,54 +75,78 @@ export function DropPointMap({
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 28px;
-          height: 28px;
-          background: ${isSelected ? '#1b3628' : '#ffffff'};
-          color: ${isSelected ? '#ffffff' : '#1b3628'};
-          border: 1.5px solid #1b3628;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+          width: 32px;
+          height: 32px;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          background: ${isSelected ? '#059669' : '#064e3b'};
+          color: #ffffff;
+          border: 2px solid ${isSelected ? '#34d399' : '#ffffff'};
+          box-shadow: 0 4px 10px rgba(0,0,0,0.35);
           cursor: pointer;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 11px;
-          font-weight: 700;
+          transition: transform 0.2s ease, background 0.2s ease;
         ">
-          CL
+          <div style="
+            transform: rotate(45deg);
+            font-size: 11px;
+            font-weight: 800;
+            font-family: sans-serif;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            CL
+          </div>
         </div>
       `;
 
       const customIcon = L.divIcon({
         html: iconHtml,
         className: 'clothloop-pin',
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -14],
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32],
       });
 
-      const marker = L.marker([point.latitude, point.longitude], { icon: customIcon }).addTo(map);
+      const marker = L.marker([point.latitude, point.longitude], { 
+        icon: customIcon,
+        title: `${point.name} (${point.city})`,
+      }).addTo(map);
 
+      // Tooltip on hover
+      marker.bindTooltip(`<strong>${point.name}</strong><br/><span style="font-size:10px; color:#064e3b;">${point.city} &bull; ${point.category}</span>`, {
+        direction: 'top',
+        offset: [0, -30],
+        opacity: 0.95,
+      });
+
+      // Popup Content on click
       const popupContent = `
-        <div style="font-family: 'DM Sans', sans-serif; padding: 2px; max-width: 220px;">
-          <span style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #757169; display: block; margin-bottom: 2px;">
+        <div style="font-family: system-ui, -apple-system, sans-serif; padding: 4px; max-width: 240px;">
+          <span style="font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #059669; display: block; margin-bottom: 2px;">
             ${point.city} &middot; ${point.category}
           </span>
-          <h4 style="font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 700; color: #191817; margin: 0 0 4px 0; line-height: 1.2;">
+          <h4 style="font-size: 13px; font-weight: 800; color: #111827; margin: 0 0 4px 0; line-height: 1.25; letter-spacing: -0.02em;">
             ${point.name}
           </h4>
-          <p style="font-size: 11px; color: #757169; margin: 0 0 6px 0; line-height: 1.35;">
+          <p style="font-size: 11px; color: #4b5563; margin: 0 0 6px 0; line-height: 1.35;">
             ${point.address}
           </p>
-          <div style="font-size: 10px; color: #1b3628; font-weight: 600; margin-bottom: 6px;">
-            Operasional: ${point.operatingHours}
+          <div style="font-size: 10px; color: #064e3b; font-weight: 700; margin-bottom: 8px; background: #ecfdf5; padding: 3px 6px; border-radius: 4px; border: 1px solid #a7f3d0;">
+            🕒 Jam Operasional: ${point.operatingHours}
           </div>
           <button id="btn-select-${point.id}" style="
             width: 100%;
-            background: #1b3628;
+            background: #064e3b;
             color: #ffffff;
             border: none;
-            padding: 6px 8px;
+            padding: 7px 10px;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 700;
+            border-radius: 6px;
             cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
           ">
             Pilih Lokasi Ini
           </button>
@@ -144,29 +173,61 @@ export function DropPointMap({
       bounds.extend([point.latitude, point.longitude]);
     });
 
-    if (!selectedPointId && points.length > 0) {
-      map.fitBounds(bounds, { padding: [30, 30] });
-    }
-  }, [points, selectedPointId, onSelectPoint]);
+    boundsRef.current = bounds;
 
-  // Smooth flyTo selected point
+    // Fit bounds across all points initially if points changed or autoFit requested
+    if (bounds.isValid() && (!selectedPointId || autoFitAll)) {
+      map.fitBounds(bounds, { padding: [35, 35], maxZoom: 12 });
+    }
+  }, [points, onSelectPoint]);
+
+  // Handle selected point flyTo when user clicks a specific point
+  const prevSelectedRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !selectedPointId) return;
 
-    const selectedPoint = points.find((p) => p.id === selectedPointId);
-    if (selectedPoint) {
-      map.flyTo([selectedPoint.latitude, selectedPoint.longitude], 13, { duration: 1.0 });
-      const marker = markersRef.current.get(selectedPointId);
-      if (marker) marker.openPopup();
+    // Only fly if user actively changed the selected point
+    if (prevSelectedRef.current !== selectedPointId) {
+      prevSelectedRef.current = selectedPointId;
+      const selectedPoint = points.find((p) => p.id === selectedPointId);
+      if (selectedPoint) {
+        map.flyTo([selectedPoint.latitude, selectedPoint.longitude], 14, { duration: 1.2 });
+        const marker = markersRef.current.get(selectedPointId);
+        if (marker) {
+          setTimeout(() => marker.openPopup(), 400);
+        }
+      }
     }
   }, [selectedPointId, points]);
 
+  const handleFitAll = () => {
+    const map = mapInstanceRef.current;
+    if (!map || !boundsRef.current || !boundsRef.current.isValid()) return;
+    map.fitBounds(boundsRef.current, { padding: [30, 30], maxZoom: 12 });
+  };
+
   return (
-    <div style={{ position: 'relative', width: '100%', height, border: '1px solid var(--border-hairline)' }}>
+    <div style={{ position: 'relative', width: '100%', height, border: '1px solid var(--border-hairline)' }} className="rounded-2xl overflow-hidden">
       <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
-      <div className="absolute top-2 right-2 z-10 bg-white/95 px-2.5 py-1 border border-[var(--border-hairline)] text-[10px] text-[var(--ink-secondary)] font-mono">
-        OpenStreetMap Network
+      
+      {/* Top Controls Overlay */}
+      <div className="absolute top-2.5 right-2.5 z-10 flex gap-1.5 items-center">
+        <button
+          type="button"
+          onClick={handleFitAll}
+          className="bg-white/95 hover:bg-white text-emerald-900 px-2.5 py-1 rounded-lg border border-emerald-900/20 text-[10px] font-bold shadow-md cursor-pointer transition-all flex items-center gap-1"
+          title="Tampilkan seluruh titik kumpul di peta Indonesia"
+        >
+          <Globe size={12} className="text-emerald-700" />
+          <span>Lihat Semua ({points.length} Titik)</span>
+        </button>
+      </div>
+
+      {/* Bottom Left Legend */}
+      <div className="absolute bottom-2.5 left-2.5 z-10 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-emerald-900/15 text-[10px] text-emerald-950 font-bold shadow-sm flex items-center gap-1.5 pointer-events-none">
+        <div className="w-2.5 h-2.5 rounded-full bg-emerald-700 ring-2 ring-emerald-400" />
+        <span>{points.length} Titik Kumpul Terdaftar di Indonesia</span>
       </div>
     </div>
   );
