@@ -204,35 +204,35 @@ DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profi
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Users can insert/update their own profile" ON public.profiles;
-CREATE POLICY "Users can insert/update their own profile" ON public.profiles FOR ALL USING (true);
+CREATE POLICY "Users can insert/update their own profile" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Drop boxes viewable by everyone" ON public.drop_boxes;
 CREATE POLICY "Drop boxes viewable by everyone" ON public.drop_boxes FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Drop orders accessible by everyone" ON public.drop_orders;
-CREATE POLICY "Drop orders accessible by everyone" ON public.drop_orders FOR ALL USING (true);
+CREATE POLICY "Drop orders accessible by everyone" ON public.drop_orders FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Market items viewable by everyone" ON public.market_items;
 CREATE POLICY "Market items viewable by everyone" ON public.market_items FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Market items insert/update/delete by everyone" ON public.market_items;
-CREATE POLICY "Market items insert/update/delete by everyone" ON public.market_items FOR ALL USING (true);
+CREATE POLICY "Market items insert/update/delete by everyone" ON public.market_items FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Craft products viewable by everyone" ON public.craft_products;
 CREATE POLICY "Craft products viewable by everyone" ON public.craft_products FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Craft products insert/update/delete by everyone" ON public.craft_products;
-CREATE POLICY "Craft products insert/update/delete by everyone" ON public.craft_products FOR ALL USING (true);
+CREATE POLICY "Craft products insert/update/delete by everyone" ON public.craft_products FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Artisan inventory accessible by everyone" ON public.artisan_inventory;
-CREATE POLICY "Artisan inventory accessible by everyone" ON public.artisan_inventory FOR ALL USING (true);
+CREATE POLICY "Artisan inventory accessible by everyone" ON public.artisan_inventory FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Seller orders accessible by everyone" ON public.seller_orders;
-CREATE POLICY "Seller orders accessible by everyone" ON public.seller_orders FOR ALL USING (true);
+CREATE POLICY "Seller orders accessible by everyone" ON public.seller_orders FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Craft orders accessible by everyone" ON public.craft_orders;
-CREATE POLICY "Craft orders accessible by everyone" ON public.craft_orders FOR ALL USING (true);
+CREATE POLICY "Craft orders accessible by everyone" ON public.craft_orders FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Withdrawals accessible by everyone" ON public.withdrawals;
-CREATE POLICY "Withdrawals accessible by everyone" ON public.withdrawals FOR ALL USING (true);
+CREATE POLICY "Withdrawals accessible by everyone" ON public.withdrawals FOR ALL USING (true) WITH CHECK (true);
 
