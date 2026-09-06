@@ -4137,12 +4137,20 @@ export const CRAFT_PRODUCTS_MOCK: CraftProduct[] = [];
 export async function fetchCraftProducts(): Promise<CraftProduct[]> {
   try {
     const supabase = createClient();
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('craft_products')
       .select('*')
       .order('created_at', { ascending: false });
 
+    if (error) {
+      // Fallback if created_at column is not present
+      const res = await supabase.from('craft_products').select('*');
+      data = res.data;
+      error = res.error;
+    }
+
     if (error || !data) {
+      console.error('fetchCraftProducts error:', error);
       return [];
     }
 
@@ -4166,7 +4174,8 @@ export async function fetchCraftProducts(): Promise<CraftProduct[]> {
       waterSavedLiters: Number(d.water_saved_liters) || 0,
       co2SavedKg: Number(d.co2_saved_kg) || 0,
     }));
-  } catch {
+  } catch (err) {
+    console.error('Exception in fetchCraftProducts:', err);
     return [];
   }
 }
