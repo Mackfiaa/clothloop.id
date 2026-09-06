@@ -88,26 +88,6 @@ INSERT INTO public.craft_products (
   0.9
 ),
 (
-  'craft-cup-sleeve',
-  'Cup Sleeve / Pelindung Gelas Kain Perca',
-  'Mas Bayu',
-  'Jahit Lestari Solo',
-  'Solo',
-  35000,
-  55000,
-  'Home Living',
-  'Quilting & Patchwork',
-  'Kain Katun & Denim Perca',
-  'Diameter fleksibel (Gelas Kopi Regular & Large)',
-  'Pelindung tangan untuk gelas kopi panas maupun dingin. Terbuat dari katun perca tebal yang dapat dicuci berulang kali untuk mengurangi penggunaan sleeve kertas sekali pakai.',
-  ARRAY['/craft/craft-cup-sleeve.jpg'],
-  25,
-  4.8,
-  12,
-  950,
-  1.4
-),
-(
   'craft-mini-wallet',
   'Dompet Mini Lipat Denim Upcycle',
   'Bapak Dimas',
