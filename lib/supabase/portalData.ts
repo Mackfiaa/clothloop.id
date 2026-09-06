@@ -529,6 +529,40 @@ export function getCourierTasksForCity(city: string): PickupTaskItem[] {
   });
 }
 
+export function startCourierHeadingToDonor(taskId: string): { success: boolean; message: string } {
+  const tasks = getCourierTasks();
+  const target = tasks.find((t) => t.id === taskId || t.orderId === taskId);
+  if (!target) return { success: false, message: 'Tugas penjemputan tidak ditemukan' };
+
+  // Update task status (keep READY_FOR_PICKUP or custom heading flag)
+  const updatedTasks = tasks.map((t) => (t.id === target.id ? { ...t, isHeadingToDonor: true } : t));
+  setLocal('clothloop_courier_tasks', updatedTasks);
+
+  // Sync to DropOrders in local storage & Supabase
+  try {
+    const dropOrders = getLocal<any[]>('clothloop_drop_orders', []);
+    let donorUserId: string | null = null;
+    const updatedDrops = dropOrders.map((o) => {
+      if (o.id === target.id || o.bookingCode === target.orderId) {
+        donorUserId = o.userId;
+        return { ...o, status: 'COURIER_PICKUP' };
+      }
+      return o;
+    });
+    setLocal('clothloop_drop_orders', updatedDrops);
+    if (donorUserId) {
+      setLocal(`clothloop_drop_orders_${donorUserId}`, updatedDrops.filter(o => o.userId === donorUserId));
+    }
+
+    const supabase = createClient();
+    supabase.from('drop_orders').update({
+      status: 'COURIER_PICKUP',
+    }).eq('booking_code', target.orderId).then(() => {});
+  } catch {}
+
+  return { success: true, message: `Status diperbarui! Donatur dapat melihat kurir sedang menuju ke lokasi.` };
+}
+
 export function completeCourierPickup(taskId: string, inputCode?: string): { success: boolean; message: string } {
   const tasks = getCourierTasks();
   const target = tasks.find((t) => t.id === taskId || t.orderId === taskId || (inputCode && t.verificationCode.toLowerCase() === inputCode.toLowerCase().trim()));
@@ -538,20 +572,82 @@ export function completeCourierPickup(taskId: string, inputCode?: string): { suc
   const updatedTasks = tasks.map((t) => (t.id === target.id ? { ...t, status: 'IN_TRANSIT' as const } : t));
   setLocal('clothloop_courier_tasks', updatedTasks);
 
+  const profile = getCourierProfile();
+  const courierDisplayName = profile.name || 'Kurir Mitra ClothLoop (Express)';
+
   // Sync to DropOrders in local storage
+  let matchedOrder: any = null;
   try {
     const dropOrders = getLocal<any[]>('clothloop_drop_orders', []);
     const updatedDrops = dropOrders.map((o) => {
       if (o.id === target.id || o.bookingCode === target.orderId) {
-        return { ...o, status: 'RECEIVED', pointsCredited: true, scannedAt: new Date().toISOString() };
+        matchedOrder = {
+          ...o,
+          status: 'RECEIVED',
+          pointsCredited: true,
+          scannedAt: new Date().toISOString(),
+          courierName: courierDisplayName,
+        };
+        return matchedOrder;
       }
       return o;
     });
     setLocal('clothloop_drop_orders', updatedDrops);
+
+    if (matchedOrder && matchedOrder.userId) {
+      const userOrders = getLocal<any[]>(`clothloop_drop_orders_${matchedOrder.userId}`, []);
+      const updatedUserDrops = userOrders.map((o) => (o.bookingCode === target.orderId || o.id === target.id ? matchedOrder : o));
+      setLocal(`clothloop_drop_orders_${matchedOrder.userId}`, updatedUserDrops.length > 0 ? updatedUserDrops : [matchedOrder, ...userOrders]);
+    }
   } catch {}
 
+  const ptsAwarded = matchedOrder?.pointsAwarded || 300;
+  const donorUserId = matchedOrder?.userId;
+
+  // Auto-credit points and update impact to donor's profile
+  if (donorUserId && donorUserId !== 'usr-guest') {
+    try {
+      const currentSavedPts = Number(localStorage.getItem(`clothloop_points_${donorUserId}`)) || 0;
+      const newTotalPts = currentSavedPts + ptsAwarded;
+      localStorage.setItem(`clothloop_points_${donorUserId}`, String(newTotalPts));
+    } catch {}
+
+    try {
+      const supabase = createClient();
+      // Update drop_orders table in Supabase
+      supabase.from('drop_orders').update({
+        status: 'RECEIVED',
+      }).eq('booking_code', target.orderId).then(() => {});
+
+      // Fetch and update profile in Supabase
+      supabase.from('profiles').select('*').eq('id', donorUserId).single().then(({ data: donorProf }) => {
+        if (donorProf) {
+          const addedKg = matchedOrder?.estimatedWeightKg || (matchedOrder?.itemCount ? matchedOrder.itemCount * 0.4 : 2.0);
+          const newPts = (donorProf.cloth_points || 0) + ptsAwarded;
+          const newKg = Number(((Number(donorProf.total_kg_diverted) || 0) + addedKg).toFixed(1));
+          const newWater = (Number(donorProf.total_water_saved_liters) || 0) + (matchedOrder?.waterSavedLiters || 2700);
+          const newCo2 = Number(((Number(donorProf.total_co2_saved_kg) || 0) + (matchedOrder?.co2SavedKg || 3.6)).toFixed(1));
+
+          supabase.from('profiles').update({
+            cloth_points: newPts,
+            total_kg_diverted: newKg,
+            total_water_saved_liters: newWater,
+            total_co2_saved_kg: newCo2,
+          }).eq('id', donorUserId).then(() => {});
+        }
+      });
+    } catch {}
+  } else {
+    // If no userId, update Supabase drop_orders row directly
+    try {
+      const supabase = createClient();
+      supabase.from('drop_orders').update({
+        status: 'RECEIVED',
+      }).eq('booking_code', target.orderId).then(() => {});
+    } catch {}
+  }
+
   // Add courier incentive bonus
-  const profile = getCourierProfile();
   const updatedProfile: CourierProfile = {
     ...profile,
     walletBalance: profile.walletBalance + (target.earningsFee || 15000),
@@ -559,7 +655,10 @@ export function completeCourierPickup(taskId: string, inputCode?: string): { suc
   };
   saveCourierProfile(updatedProfile);
 
-  return { success: true, message: `Penjemputan donasi (${target.orderId}) terverifikasi! Insentif Rp 15.000 masuk ke dompet kurir.` };
+  return { 
+    success: true, 
+    message: `Penjemputan donasi (${target.orderId}) terverifikasi! Status donatur berubah jadi RECEIVED (+${ptsAwarded} Poin Cair ke Donatur), dan insentif Rp 15.000 masuk ke dompet kurir.` 
+  };
 }
 
 export function completeArtisanDelivery(taskId: string, inputCode?: string): { success: boolean; message: string } {
@@ -571,10 +670,32 @@ export function completeArtisanDelivery(taskId: string, inputCode?: string): { s
   const updatedTasks = tasks.map((t) => (t.id === target.id ? { ...t, status: 'DELIVERED' as const } : t));
   setLocal('clothloop_courier_tasks', updatedTasks);
 
+  // Sync drop order status to DELIVERED_TO_ARTISAN
+  try {
+    const dropOrders = getLocal<any[]>('clothloop_drop_orders', []);
+    let donorUserId: string | null = null;
+    const updatedDrops = dropOrders.map((o) => {
+      if (o.id === target.id || o.bookingCode === target.orderId) {
+        donorUserId = o.userId;
+        return { ...o, status: 'DELIVERED_TO_ARTISAN' };
+      }
+      return o;
+    });
+    setLocal('clothloop_drop_orders', updatedDrops);
+    if (donorUserId) {
+      setLocal(`clothloop_drop_orders_${donorUserId}`, updatedDrops.filter(o => o.userId === donorUserId));
+    }
+
+    const supabase = createClient();
+    supabase.from('drop_orders').update({
+      status: 'DELIVERED_TO_ARTISAN',
+    }).eq('booking_code', target.orderId).then(() => {});
+  } catch {}
+
   // Add raw material weight to artisan inventory
   addFabricStockToArtisan('Studio Daur Asri', 5, 3.5);
 
-  return { success: true, message: 'Penyerahan kain ke Studio Perajin sukses diverifikasi!' };
+  return { success: true, message: 'Penyerahan kain ke Studio Perajin sukses diverifikasi! Status donasi donatur terupdate ke Studio Rekonstruksi.' };
 }
 
 // ═══════════════════════════════════════════════════════════════════════

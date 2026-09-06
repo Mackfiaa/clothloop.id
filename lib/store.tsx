@@ -61,6 +61,7 @@ interface AppContextType {
   addNotification: (type: 'success' | 'info' | 'warning', title: string, message: string) => void;
   removeNotification: (id: string) => void;
   signOut: () => Promise<void>;
+  refreshUserData: () => Promise<void>;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
 }
@@ -157,7 +158,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Supabase Auth Listener
+  // Refresh helper available across the entire app
+  const refreshUserData = useCallback(async () => {
+    if (currentUser) {
+      await fetchProfile(currentUser);
+      await loadUserOrders(currentUser.id);
+    } else {
+      const drops = await fetchDropOrdersFromSupabase();
+      setDropOrders(drops);
+    }
+  }, [currentUser, fetchProfile, loadUserOrders]);
+
+  // Supabase Auth Listener & Periodic Live Sync (Every 3 seconds)
   useEffect(() => {
     try {
       const supabase = createClient();
@@ -190,8 +202,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
+      // Live sync timer (every 3 seconds) for real-time status updates from courier
+      const syncInterval = setInterval(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) {
+            fetchProfile(user);
+            loadUserOrders(user.id);
+          } else {
+            // Guest sync
+            fetchDropOrdersFromSupabase().then((drops) => setDropOrders(drops));
+          }
+        }).catch(() => {});
+      }, 3000);
+
+      const handleFocus = () => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) {
+            fetchProfile(user);
+            loadUserOrders(user.id);
+          }
+        }).catch(() => {});
+      };
+      window.addEventListener('focus', handleFocus);
+      window.addEventListener('storage', handleFocus);
+
       return () => {
         subscription.unsubscribe();
+        clearInterval(syncInterval);
+        window.removeEventListener('focus', handleFocus);
+        window.removeEventListener('storage', handleFocus);
       };
     } catch {
       // ignore
@@ -521,6 +560,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addNotification,
         removeNotification,
         signOut,
+        refreshUserData,
         isCartOpen,
         setIsCartOpen,
       }}

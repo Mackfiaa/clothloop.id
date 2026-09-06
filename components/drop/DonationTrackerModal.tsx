@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CheckCircle2, 
@@ -108,16 +108,25 @@ const DROPOFF_STAGES: {
 ];
 
 export function DonationTrackerModal({ order, onClose }: DonationTrackerModalProps) {
-  const { confirmCourierScan, updateOrderStatus } = useApp();
+  const { dropOrders, confirmCourierScan, updateOrderStatus, refreshUserData } = useApp();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  if (!order) return null;
+  // Always bind to latest live order from store
+  const liveOrder = useMemo(() => {
+    if (!order) return null;
+    return dropOrders.find(
+      (o) => (o.bookingCode && o.bookingCode.toLowerCase() === order.bookingCode.toLowerCase()) || o.id === order.id
+    ) || order;
+  }, [dropOrders, order]);
 
-  const isDropoff = order.method === 'DROPOFF';
+  if (!liveOrder) return null;
+
+  const isDropoff = liveOrder.method === 'DROPOFF';
   const stages = isDropoff ? DROPOFF_STAGES : PICKUP_STAGES;
 
   const currentStageIndex = () => {
     if (isDropoff) {
-      switch (order.status) {
+      switch (liveOrder.status) {
         case 'PENDING': return 0;
         case 'RECEIVED': return 1;
         case 'SORTING': return 2;
@@ -126,7 +135,7 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
         default: return 0;
       }
     } else {
-      switch (order.status) {
+      switch (liveOrder.status) {
         case 'PENDING': return 0;
         case 'COURIER_PICKUP': return 1;
         case 'RECEIVED': return 2;
@@ -140,28 +149,34 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
 
   const activeIndex = currentStageIndex();
 
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshUserData();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
+
   const handleSimulateScan = () => {
-    confirmCourierScan(order.bookingCode);
+    confirmCourierScan(liveOrder.bookingCode);
   };
 
   const handleAdvanceStatus = () => {
     if (isDropoff) {
-      if (order.status === 'PENDING') {
-        confirmCourierScan(order.bookingCode);
-      } else if (order.status === 'RECEIVED') {
-        updateOrderStatus(order.bookingCode, 'SORTING');
-      } else if (order.status === 'SORTING') {
-        updateOrderStatus(order.bookingCode, 'DELIVERED_TO_ARTISAN');
+      if (liveOrder.status === 'PENDING') {
+        confirmCourierScan(liveOrder.bookingCode);
+      } else if (liveOrder.status === 'RECEIVED') {
+        updateOrderStatus(liveOrder.bookingCode, 'SORTING');
+      } else if (liveOrder.status === 'SORTING') {
+        updateOrderStatus(liveOrder.bookingCode, 'DELIVERED_TO_ARTISAN');
       }
     } else {
-      if (order.status === 'PENDING') {
-        updateOrderStatus(order.bookingCode, 'COURIER_PICKUP');
-      } else if (order.status === 'COURIER_PICKUP') {
-        confirmCourierScan(order.bookingCode);
-      } else if (order.status === 'RECEIVED') {
-        updateOrderStatus(order.bookingCode, 'SORTING');
-      } else if (order.status === 'SORTING') {
-        updateOrderStatus(order.bookingCode, 'DELIVERED_TO_ARTISAN');
+      if (liveOrder.status === 'PENDING') {
+        updateOrderStatus(liveOrder.bookingCode, 'COURIER_PICKUP');
+      } else if (liveOrder.status === 'COURIER_PICKUP') {
+        confirmCourierScan(liveOrder.bookingCode);
+      } else if (liveOrder.status === 'RECEIVED') {
+        updateOrderStatus(liveOrder.bookingCode, 'SORTING');
+      } else if (liveOrder.status === 'SORTING') {
+        updateOrderStatus(liveOrder.bookingCode, 'DELIVERED_TO_ARTISAN');
       }
     }
   };
@@ -176,13 +191,24 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
         className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 border border-emerald-900/15 shadow-2xl flex flex-col gap-6 relative max-h-[90vh] overflow-y-auto" 
         onClick={e => e.stopPropagation()}
       >
-        {/* Close Button */}
-        <button 
-          onClick={onClose}
-          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center border-none cursor-pointer transition-colors"
-        >
-          <X size={16} />
-        </button>
+        {/* Top Control Buttons */}
+        <div className="absolute top-5 right-5 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            title="Segarkan status penjemputan"
+            className="px-2.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold flex items-center gap-1 border border-emerald-200 cursor-pointer transition-colors"
+          >
+            <Sparkles size={13} className={isRefreshing ? 'animate-spin' : ''} />
+            <span>Segarkan</span>
+          </button>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center border-none cursor-pointer transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
 
         {/* Modal Header */}
         <div>
@@ -192,7 +218,7 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
             </span>
             <span className="text-[10px] font-bold text-gray-400">&bull;</span>
             <span className="text-xs font-mono font-bold text-[var(--emerald-vibrant)]">
-              {order.bookingCode}
+              {liveOrder.bookingCode}
             </span>
           </div>
           <h3 className="text-xl sm:text-2xl font-extrabold text-[var(--ink-primary)] tracking-tight">
@@ -208,13 +234,13 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
           <div className="flex justify-between items-start">
             <div>
               <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider block">Donatur:</span>
-              <strong className="text-sm font-bold text-white">{order.userName}</strong>
-              <span className="text-xs text-white/70 block">{order.userPhone}</span>
+              <strong className="text-sm font-bold text-white">{liveOrder.userName}</strong>
+              <span className="text-xs text-white/70 block">{liveOrder.userPhone}</span>
             </div>
             <div className="text-right">
               <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider block">Metode:</span>
               <strong className="text-xs font-bold text-emerald-200">
-                {order.method === 'DROPOFF' ? 'Drop-off Mandiri' : 'Pick-up Kurir'}
+                {liveOrder.method === 'DROPOFF' ? 'Drop-off Mandiri' : 'Pick-up Kurir'}
               </strong>
             </div>
           </div>
@@ -222,16 +248,16 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
           <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/15 text-center">
             <div className="bg-white/10 rounded-xl p-2">
               <span className="text-[9px] text-white/75 block">Total Pakaian</span>
-              <strong className="text-xs font-bold text-white">{order.itemCount} Helai</strong>
+              <strong className="text-xs font-bold text-white">{liveOrder.itemCount} Helai</strong>
             </div>
             <div className="bg-white/10 rounded-xl p-2">
               <span className="text-[9px] text-white/75 block">Reward Poin</span>
-              <strong className="text-xs font-bold text-amber-300">+{order.pointsAwarded} Pts</strong>
+              <strong className="text-xs font-bold text-amber-300">+{liveOrder.pointsAwarded} Pts</strong>
             </div>
             <div className="bg-white/10 rounded-xl p-2">
               <span className="text-[9px] text-white/75 block">Status Poin</span>
-              <strong className={`text-[11px] font-bold ${order.pointsCredited ? 'text-emerald-300' : 'text-amber-200'}`}>
-                {order.pointsCredited ? 'Sudah Masuk' : 'Menunggu Scan'}
+              <strong className={`text-[11px] font-bold ${liveOrder.pointsCredited ? 'text-emerald-300' : 'text-amber-200'}`}>
+                {liveOrder.pointsCredited ? 'Sudah Masuk' : 'Menunggu Scan'}
               </strong>
             </div>
           </div>
@@ -293,10 +319,10 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
                   </p>
 
                   {/* Stage-specific micro info */}
-                  {stg.key === 'RECEIVED' && order.scannedAt && (
+                  {stg.key === 'RECEIVED' && liveOrder.scannedAt && (
                     <div className="mt-1.5 p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900 flex items-center justify-between">
-                      <span>Waktu Scan: <strong>{new Date(order.scannedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB</strong></span>
-                      <span className="font-bold text-emerald-700">+{order.pointsAwarded} Pts Dikreditkan</span>
+                      <span>Waktu Scan: <strong>{new Date(liveOrder.scannedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB</strong></span>
+                      <span className="font-bold text-emerald-700">+{liveOrder.pointsAwarded} Pts Dikreditkan</span>
                     </div>
                   )}
                   {stg.key === 'DELIVERED_TO_ARTISAN' && (
@@ -312,7 +338,7 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
 
         {/* Action Buttons & Simulation */}
         <div className="pt-3 border-t border-gray-100 flex flex-col gap-2.5">
-          {!order.pointsCredited ? (
+          {!liveOrder.pointsCredited ? (
             <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="text-xs text-amber-900">
                 <span className="font-bold block">

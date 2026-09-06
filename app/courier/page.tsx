@@ -33,6 +33,7 @@ import {
   getCourierProfile,
   saveCourierProfile,
   getCourierTasksForCity,
+  startCourierHeadingToDonor,
   completeCourierPickup,
   completeArtisanDelivery,
   requestBankWithdrawal,
@@ -423,14 +424,30 @@ export default function CourierPortalPage() {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPickupScanner(task)}
-                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
-                    >
-                      <QrCode className="w-3.5 h-3.5" />
-                      <span>Scan QR Donatur / Input Kode</span>
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const res = startCourierHeadingToDonor(task.id);
+                          if (res.success) {
+                            setTasks(getCourierTasksForCity(courier.city));
+                            addNotification('info', 'Status Penjemputan', res.message);
+                          }
+                        }}
+                        className="py-2.5 px-3 rounded-xl bg-amber-100/80 hover:bg-amber-200/80 text-amber-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-amber-300/60"
+                      >
+                        <Navigation className="w-3.5 h-3.5 text-amber-900" />
+                        <span>Menuju Lokasi</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPickupScanner(task)}
+                        className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span>Scan QR / Input Kode</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
