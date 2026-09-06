@@ -4312,14 +4312,9 @@ export async function fetchCraftProducts(): Promise<CraftProduct[]> {
 
 // ── Drop Orders (Riwayat Donasi Pakaian) Database Sync ──
 export async function fetchDropOrdersFromSupabase(userId?: string): Promise<DropOrder[]> {
-  if (!userId) {
-    if (typeof window === 'undefined') return [];
-    try {
-      const localGuest = localStorage.getItem('clothloop_drop_orders');
-      return localGuest ? JSON.parse(localGuest) : [];
-    } catch {
-      return [];
-    }
+  // If guest / logged out, strictly return empty array to prevent data leakage across accounts
+  if (!userId || userId === 'usr-guest') {
+    return [];
   }
 
   let dbOrders: DropOrder[] = [];
@@ -4345,6 +4340,7 @@ export async function fetchDropOrdersFromSupabase(userId?: string): Promise<Drop
         courierService: d.courier_service,
         scheduledDate: d.scheduled_date || '2026-09-06',
         scheduledSlot: d.scheduled_slot || '09.00 - 12.00 (Pagi)',
+        estimatedWeightKg: Number(d.estimated_weight_kg) || 0,
         itemCount: Number(d.item_count) || 1,
         garmentTypes: d.garment_types || [],
         status: d.status as any,
@@ -4368,12 +4364,6 @@ export async function fetchDropOrdersFromSupabase(userId?: string): Promise<Drop
       const scopedRaw = localStorage.getItem(`clothloop_drop_orders_${userId}`);
       if (scopedRaw) {
         localOrders = JSON.parse(scopedRaw);
-      } else {
-        const generalRaw = localStorage.getItem('clothloop_drop_orders');
-        if (generalRaw) {
-          const generalOrders: DropOrder[] = JSON.parse(generalRaw);
-          localOrders = generalOrders.filter(o => o.userId === userId || !o.userId);
-        }
       }
     } catch {}
   }
@@ -4385,9 +4375,8 @@ export async function fetchDropOrdersFromSupabase(userId?: string): Promise<Drop
     if (!map.has(key)) {
       map.set(key, order);
     } else {
-      // Prioritize the one with updated status or scanned status
       const existing = map.get(key)!;
-      if (order.status === 'RECEIVED' || order.pointsCredited) {
+      if (order.status === 'RECEIVED' || order.status === 'DELIVERED_TO_ARTISAN' || order.pointsCredited) {
         map.set(key, order);
       }
     }
@@ -4400,7 +4389,6 @@ export async function fetchDropOrdersFromSupabase(userId?: string): Promise<Drop
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(`clothloop_drop_orders_${userId}`, JSON.stringify(merged));
-      localStorage.setItem('clothloop_drop_orders', JSON.stringify(merged));
     } catch {}
   }
 
@@ -4409,57 +4397,54 @@ export async function fetchDropOrdersFromSupabase(userId?: string): Promise<Drop
 
 export async function saveDropOrderToSupabase(order: DropOrder): Promise<void> {
   const userId = order.userId || 'usr-guest';
+  const estWeight = Number(order.estimatedWeightKg) || Number((order.itemCount * 0.4).toFixed(1));
 
   // Save to user-scoped local storage immediately
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && userId !== 'usr-guest') {
     try {
       const scopedKey = `clothloop_drop_orders_${userId}`;
       const existingRaw = localStorage.getItem(scopedKey);
       const existing: DropOrder[] = existingRaw ? JSON.parse(existingRaw) : [];
       const updated = [order, ...existing.filter(o => o.bookingCode !== order.bookingCode && o.id !== order.id)];
       localStorage.setItem(scopedKey, JSON.stringify(updated));
-      localStorage.setItem('clothloop_drop_orders', JSON.stringify(updated));
     } catch {}
   }
 
   try {
     const supabase = createClient();
-    await supabase.from('drop_orders').upsert({
+    const payload = {
       id: order.id,
       booking_code: order.bookingCode,
       user_id: userId,
-      user_name: order.userName,
-      user_phone: order.userPhone,
-      user_address: order.userAddress || `${order.userCity || ''} ${order.userDistrict || ''}`,
+      user_name: order.userName || 'Donatur ClothLoop',
+      user_phone: order.userPhone || '-',
+      user_address: order.userAddress || `${order.userCity || ''} ${order.userDistrict || ''}`.trim() || 'Alamat Donatur',
       method: order.method,
-      drop_point_id: order.dropPointId,
-      drop_point_name: order.dropPointName,
-      courier_service: order.courierService,
-      item_count: order.itemCount,
-      garment_types: order.garmentTypes,
-      status: order.status,
-      points_awarded: order.pointsAwarded,
-      water_saved_liters: order.waterSavedLiters,
-      co2_saved_kg: order.co2SavedKg,
-      qr_code_value: order.qrCodeValue,
-      notes: order.notes,
-      created_at: order.createdAt,
-    });
-  } catch {
-    // ignore
+      drop_point_id: order.dropPointId || null,
+      drop_point_name: order.dropPointName || null,
+      courier_service: order.courierService || null,
+      estimated_weight_kg: estWeight,
+      item_count: order.itemCount || 1,
+      garment_types: order.garmentTypes || [],
+      status: order.status || 'PENDING',
+      points_awarded: order.pointsAwarded || 300,
+      water_saved_liters: order.waterSavedLiters || 2700,
+      co2_saved_kg: order.co2SavedKg || 3.6,
+      qr_code_value: order.qrCodeValue || `CLD-VERIFY:${order.bookingCode}:${order.pointsAwarded}PTS`,
+      notes: order.notes || null,
+      created_at: order.createdAt || new Date().toISOString(),
+    };
+
+    await supabase.from('drop_orders').upsert(payload, { onConflict: 'booking_code' });
+  } catch (err) {
+    console.error('Failed saving drop order to Supabase:', err);
   }
 }
 
 // ── Marketplace & Craft Orders (Riwayat Pembelian & Pelacakan) Database Sync ──
 export async function fetchMarketplaceOrdersFromSupabase(userId?: string): Promise<CraftOrder[]> {
-  if (!userId) {
-    if (typeof window === 'undefined') return [];
-    try {
-      const localGuest = localStorage.getItem('clothloop_craft_orders');
-      return localGuest ? JSON.parse(localGuest) : [];
-    } catch {
-      return [];
-    }
+  if (!userId || userId === 'usr-guest') {
+    return [];
   }
 
   let dbOrders: CraftOrder[] = [];
@@ -4507,12 +4492,6 @@ export async function fetchMarketplaceOrdersFromSupabase(userId?: string): Promi
       const scopedRaw = localStorage.getItem(`clothloop_craft_orders_${userId}`);
       if (scopedRaw) {
         localOrders = JSON.parse(scopedRaw);
-      } else {
-        const generalRaw = localStorage.getItem('clothloop_craft_orders');
-        if (generalRaw) {
-          const generalOrders: CraftOrder[] = JSON.parse(generalRaw);
-          localOrders = generalOrders.filter(o => o.userId === userId || !o.userId);
-        }
       }
     } catch {}
   }
@@ -4538,7 +4517,6 @@ export async function fetchMarketplaceOrdersFromSupabase(userId?: string): Promi
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(`clothloop_craft_orders_${userId}`, JSON.stringify(merged));
-      localStorage.setItem('clothloop_craft_orders', JSON.stringify(merged));
     } catch {}
   }
 
@@ -4549,14 +4527,13 @@ export async function saveMarketplaceOrderToSupabase(order: CraftOrder): Promise
   const userId = order.userId || 'usr-guest';
 
   // Save to user-scoped local storage immediately
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && userId !== 'usr-guest') {
     try {
       const scopedKey = `clothloop_craft_orders_${userId}`;
       const existingRaw = localStorage.getItem(scopedKey);
       const existing: CraftOrder[] = existingRaw ? JSON.parse(existingRaw) : [];
       const updated = [order, ...existing.filter(o => o.orderNumber !== order.orderNumber && o.id !== order.id)];
       localStorage.setItem(scopedKey, JSON.stringify(updated));
-      localStorage.setItem('clothloop_craft_orders', JSON.stringify(updated));
     } catch {}
   }
 
@@ -4584,9 +4561,9 @@ export async function saveMarketplaceOrderToSupabase(order: CraftOrder): Promise
       escrow_status: order.escrowStatus,
       estimated_delivery_date: order.estimatedDeliveryDate,
       created_at: order.createdAt,
-    });
-  } catch {
-    // ignore
+    }, { onConflict: 'order_number' });
+  } catch (err) {
+    console.error('Failed saving marketplace order to Supabase:', err);
   }
 }
 

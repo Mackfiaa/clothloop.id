@@ -260,12 +260,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
-      // Reset in-memory session state only, never purge persistent history
+      // Reset in-memory session state
       setCurrentUser(null);
       setUserProfile(null);
       setDropOrders([]);
       setCraftOrders([]);
       setUserPoints(0);
+      try {
+        localStorage.removeItem('clothloop_drop_orders');
+        localStorage.removeItem('clothloop_craft_orders');
+      } catch {}
       addNotification('info', 'Sampai Jumpa', 'Kamu telah keluar dari akun.');
     } catch {
       // ignore
