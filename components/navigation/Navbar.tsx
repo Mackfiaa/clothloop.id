@@ -9,13 +9,6 @@ import { formatNumber } from '@/lib/utils';
 import { ShoppingBag, User as UserIcon, LogOut, Scissors, Store, Truck } from 'lucide-react';
 import { UserRole } from '@/lib/types';
 
-const navLinks = [
-  { href: '/drop', label: 'ClothDrop' },
-  { href: '/market', label: 'Preloved' },
-  { href: '/craft', label: 'Craft Studio' },
-  { href: '/impact', label: 'Eco Impact' },
-];
-
 const ROLE_LABELS: Record<UserRole, { label: string; bg: string; color: string; border: string }> = {
   USER: { label: 'Donatur', bg: 'var(--forest-subtle)', color: 'var(--emerald-vibrant)', border: 'rgba(5, 150, 105, 0.25)' },
   SELLER: { label: 'Seller Preloved', bg: 'var(--ochre-subtle)', color: 'var(--ochre)', border: 'rgba(217, 119, 6, 0.25)' },
@@ -64,26 +57,6 @@ export function Navbar() {
               .id
             </span>
           </Link>
-
-          {/* Center Navigation Links (Desktop) */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all no-underline ${
-                    isActive 
-                      ? 'bg-emerald-800 text-white shadow-xs' 
-                      : 'text-stone-700 hover:text-emerald-800 hover:bg-stone-100'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
 
           {/* Right Section: Auth, Points & Cart */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
