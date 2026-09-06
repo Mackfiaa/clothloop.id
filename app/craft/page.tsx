@@ -63,7 +63,8 @@ export default function CraftMarketplacePage() {
   useEffect(() => {
     fetchCraftProducts().then((fetched) => {
       const liveCrafts = getAllCraftProductsWithArtisans();
-      setProducts(liveCrafts.length > 0 ? liveCrafts : fetched);
+      const combined = [...liveCrafts, ...fetched.filter(f => !liveCrafts.some(lc => lc.id === f.id))];
+      setProducts(combined.length > 0 ? combined : fetched);
     });
     const savedWishlist = localStorage.getItem('clothloop_craft_wishlist');
     if (savedWishlist) {
@@ -371,24 +372,40 @@ export default function CraftMarketplacePage() {
 
             {/* Product Cards Grid */}
             {filteredProducts.length === 0 ? (
-              <div className="bg-white rounded-3xl p-12 text-center border border-[var(--border-hairline)] max-w-md mx-auto flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+              <div className="bg-white rounded-3xl p-12 text-center border border-[var(--border-hairline)] max-w-lg mx-auto flex flex-col items-center gap-3 shadow-2xs">
+                <div className="w-14 h-14 rounded-full bg-amber-50 text-amber-800 flex items-center justify-center font-bold">
                   <ShoppingBag size={24} />
                 </div>
                 <h3 className="text-base font-extrabold text-[var(--ink-primary)]">
-                  {activeMainTab === 'WISHLIST' ? 'Belum Ada Produk Disukai' : 'Tidak Ada Produk yang Cocok'}
+                  {activeMainTab === 'WISHLIST' 
+                    ? 'Belum Ada Produk Disukai' 
+                    : products.length === 0 
+                      ? 'Katalog Kerajinan Masih Kosong (0 Produk)' 
+                      : 'Tidak Ada Produk yang Cocok'}
                 </h3>
-                <p className="text-xs text-[var(--ink-secondary)]">
+                <p className="text-xs text-[var(--ink-secondary)] leading-relaxed">
                   {activeMainTab === 'WISHLIST' 
                     ? 'Klik ikon Love pada produk yang Anda minati di katalog kerajinan.' 
-                    : 'Coba gunakan kata kunci lain atau pilih kota / kategori Semua.'}
+                    : products.length === 0 
+                      ? 'Belum ada karya upcycling yang diunggah oleh studio perajin & UMKM. Masuk ke dashboard untuk mengunggah produk kerajinan Anda!' 
+                      : 'Coba gunakan kata kunci lain atau pilih kota / kategori Semua.'}
                 </p>
-                <button
-                  onClick={() => { setSelectedCategory('Semua'); setSelectedCity('Semua Kota'); setSearchQuery(''); setActiveMainTab('CATALOG'); }}
-                  className="btn-secondary text-xs py-2 px-4 font-bold mt-2 cursor-pointer"
-                >
-                  Reset Filter & Buka Katalog
-                </button>
+                {products.length === 0 ? (
+                  <Link
+                    href="/craftsman"
+                    className="inline-flex items-center gap-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-extrabold py-2.5 px-5 rounded-2xl shadow-sm transition-all mt-2"
+                  >
+                    <span>Unggah Produk di Dashboard Perajin</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => { setSelectedCategory('Semua'); setSelectedCity('Semua Kota'); setSearchQuery(''); setActiveMainTab('CATALOG'); }}
+                    className="btn-secondary text-xs py-2 px-4 font-bold mt-2 cursor-pointer"
+                  >
+                    Reset Filter & Buka Katalog
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

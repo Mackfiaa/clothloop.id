@@ -4132,146 +4132,7 @@ export async function fetchRewardVouchers(): Promise<RewardVoucher[]> {
 // ── Craft Products (Ready to Buy) ───────────────────
 import { CraftProduct } from '@/lib/types';
 
-export const CRAFT_PRODUCTS_MOCK: CraftProduct[] = [
-  {
-    id: 'cp-1',
-    title: 'Noragi Haori Boro Indigo Patchwork',
-    artisanName: 'Bima Santoso',
-    artisanStudio: 'Studio Rework Bandung',
-    artisanCity: 'Bandung',
-    price: 345000,
-    originalPrice: 420000,
-    category: 'Busana Upcycled',
-    technique: 'Sashiko Stitch & Boro Patchwork',
-    materialSaved: '3 Helai Denim Celana Afkir',
-    dimensions: 'All Size (Lebar Dada 62cm, Panjang 72cm)',
-    story: 'Karya outerwear bergaya Noragi Jepang yang dikonstruksi tangan dari tiga celana jeans vintage berbeda tone warna, diperkuat tusukan benang Sashiko putih tahan banting.',
-    images: [
-      'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1551537482-f2075a1d41f2?w=800&auto=format&fit=crop&q=80',
-    ],
-    stockCount: 4,
-    rating: 4.9,
-    reviewCount: 18,
-    waterSavedLiters: 8100,
-    co2SavedKg: 10.8,
-  },
-  {
-    id: 'cp-2',
-    title: 'Botanical Quilted Tote Bag Daun Jati',
-    artisanName: 'Ratna Ayu',
-    artisanStudio: 'KainKala Studio',
-    artisanCity: 'Yogyakarta',
-    price: 185000,
-    originalPrice: 225000,
-    category: 'Tas & Pouch',
-    technique: 'Perca Quilt & Ecoprint Daun Jati',
-    materialSaved: '1,2 kg Potongan Perca Katun',
-    dimensions: '40cm x 36cm (Muat Laptop 15 Inch)',
-    story: 'Tas jinjing tebal empuk dengan lapisan batting kapas daur ulang. Warna cokelat keemasan didapat dari pewarnaan alami daun jati kebun lereng Merapi.',
-    images: [
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=800&auto=format&fit=crop&q=80',
-    ],
-    stockCount: 7,
-    rating: 5.0,
-    reviewCount: 32,
-    waterSavedLiters: 3240,
-    co2SavedKg: 4.3,
-  },
-  {
-    id: 'cp-3',
-    title: 'Reversible Corduroy Bucket Hat Mosaic',
-    artisanName: 'Fahri Ilham',
-    artisanStudio: 'Sasirangan Lab',
-    artisanCity: 'Banjarmasin',
-    price: 135000,
-    originalPrice: 160000,
-    category: 'Aksesoris & Topi',
-    technique: 'Multi-panel Vintage Corduroy Stitch',
-    materialSaved: '2 Kemeja Korduroi Bekas',
-    dimensions: 'Lingkar Kepala 58 - 60cm',
-    story: 'Topi bucket dua muka (bisa dibalik). Satu sisi mozaik korduroi hangat earth tone, sisi lain katun polos motif tribal halus.',
-    images: [
-      'https://images.unsplash.com/photo-1576871337622-98d48d1cf531?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80',
-    ],
-    stockCount: 5,
-    rating: 4.8,
-    reviewCount: 14,
-    waterSavedLiters: 2700,
-    co2SavedKg: 3.6,
-  },
-  {
-    id: 'cp-4',
-    title: 'Heavyweight Canvas Utility Workwear Vest',
-    artisanName: 'Bima Santoso',
-    artisanStudio: 'Studio Rework Bandung',
-    artisanCity: 'Bandung',
-    price: 295000,
-    originalPrice: 350000,
-    category: 'Busana Upcycled',
-    technique: 'Multi-pocket Reconstruction',
-    materialSaved: '2 Jaket Kanvas Afkir Pabrik',
-    dimensions: 'All Size (Lebar Dada 58cm, Panjang 65cm)',
-    story: 'Rompi utilitarian kuat dengan 6 saku serbaguna. Dibuat dari sisa kain seragam mekanik kanvas tebal 14oz.',
-    images: [
-      'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800&auto=format&fit=crop&q=80',
-    ],
-    stockCount: 3,
-    rating: 4.9,
-    reviewCount: 9,
-    waterSavedLiters: 5400,
-    co2SavedKg: 7.2,
-  },
-  {
-    id: 'cp-5',
-    title: 'Sashiko Zip Pouch & Tech Organizer',
-    artisanName: 'Siti Hanifah',
-    artisanStudio: 'Jahit Lestari',
-    artisanCity: 'Solo',
-    price: 85000,
-    originalPrice: 110000,
-    category: 'Tas & Pouch',
-    technique: 'Traditional Hand Sashiko',
-    materialSaved: 'Perca Denim & Kain Tenun Lurik',
-    dimensions: '22cm x 15cm x 5cm',
-    story: 'Pouch tangan serbaguna untuk charger, headset, dan alat tulis dengan bantalan empuk di dalamnya dan resleting YKK kuningan.',
-    images: [
-      'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-    ],
-    stockCount: 12,
-    rating: 5.0,
-    reviewCount: 26,
-    waterSavedLiters: 1350,
-    co2SavedKg: 1.8,
-  },
-  {
-    id: 'cp-6',
-    title: 'Batik Lawasan Cushion Cover Mosaic (Set of 2)',
-    artisanName: 'Ratna Ayu',
-    artisanStudio: 'KainKala Studio',
-    artisanCity: 'Yogyakarta',
-    price: 165000,
-    originalPrice: 195000,
-    category: 'Home Living',
-    technique: 'Patchwork Perca Batik Lawas',
-    materialSaved: 'Potongan Sisa Kain Batik Sutra & Katun',
-    dimensions: '45cm x 45cm',
-    story: 'Sarung bantal sofa artistik yang menggabungkan potongan motif batik Parang, Kawung, dan Megamendung lawas dengan jahitan tepi rapi.',
-    images: [
-      'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-    ],
-    stockCount: 6,
-    rating: 4.9,
-    reviewCount: 21,
-    waterSavedLiters: 4050,
-    co2SavedKg: 5.4,
-  },
-];
+export const CRAFT_PRODUCTS_MOCK: CraftProduct[] = [];
 
 export async function fetchCraftProducts(): Promise<CraftProduct[]> {
   try {
@@ -4279,10 +4140,10 @@ export async function fetchCraftProducts(): Promise<CraftProduct[]> {
     const { data, error } = await supabase
       .from('craft_products')
       .select('*')
-      .order('rating', { ascending: false });
+      .order('created_at', { ascending: false });
 
-    if (error || !data || data.length === 0) {
-      return CRAFT_PRODUCTS_MOCK;
+    if (error || !data) {
+      return [];
     }
 
     return data.map((d: any) => ({
@@ -4306,7 +4167,7 @@ export async function fetchCraftProducts(): Promise<CraftProduct[]> {
       co2SavedKg: Number(d.co2_saved_kg) || 0,
     }));
   } catch {
-    return CRAFT_PRODUCTS_MOCK;
+    return [];
   }
 }
 

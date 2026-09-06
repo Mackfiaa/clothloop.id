@@ -21,7 +21,11 @@ import {
   Sparkles, 
   Building2, 
   Wallet,
-  Inbox
+  Inbox,
+  Edit3,
+  Trash2,
+  UploadCloud,
+  ImageIcon
 } from 'lucide-react';
 import { RolePortalNavbar } from '@/components/portal/RolePortalNavbar';
 import { useApp } from '@/lib/store';
@@ -30,6 +34,8 @@ import { formatRupiah } from '@/lib/utils';
 import { 
   getAllMarketItemsWithSellers, 
   saveNewPrelovedItem,
+  updatePrelovedItem,
+  deletePrelovedItem,
   getCustomSellerItems,
   getSellerOrders,
   saveSellerOrder,
@@ -37,6 +43,7 @@ import {
   submitBankWithdrawal,
   getWithdrawalHistory
 } from '@/lib/supabase/portalData';
+import { fetchMarketItems } from '@/lib/supabase/data';
 import { INDONESIA_CITIES } from '@/lib/constants';
 
 export default function SellerPortalPage() {
@@ -61,7 +68,26 @@ export default function SellerPortalPage() {
   const [price, setPrice] = useState(85000);
   const [originalPrice, setOriginalPrice] = useState(250000);
   const [story, setStory] = useState('');
-  const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=800&q=80');
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [urlInput, setUrlInput] = useState('');
+
+  // Modal Edit State
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBrand, setEditBrand] = useState('');
+  const [editSellerCity, setEditSellerCity] = useState('');
+  const [editCategory, setEditCategory] = useState<GarmentCategory>('Wanita');
+  const [editCondition, setEditCondition] = useState<GarmentCondition>('LIKE_NEW');
+  const [editSize, setEditSize] = useState('M');
+  const [editChestWidthCm, setEditChestWidthCm] = useState(50);
+  const [editLengthCm, setEditLengthCm] = useState(68);
+  const [editMaterial, setEditMaterial] = useState('100% Katun Organik');
+  const [editPrice, setEditPrice] = useState(0);
+  const [editOriginalPrice, setEditOriginalPrice] = useState(0);
+  const [editStory, setEditStory] = useState('');
+  const [editUploadedImages, setEditUploadedImages] = useState<string[]>([]);
+  const [editUrlInput, setEditUrlInput] = useState('');
 
   // Finance Withdrawal State
   const [bankName, setBankName] = useState('Bank Central Asia (BCA)');
@@ -70,8 +96,16 @@ export default function SellerPortalPage() {
   const [withdrawAmount, setWithdrawAmount] = useState(50000);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
 
+  const loadProducts = () => {
+    fetchMarketItems().then((fetched) => {
+      const local = getCustomSellerItems();
+      const combined = [...local, ...fetched.filter(f => !local.some(l => l.id === f.id))];
+      setProducts(combined);
+    });
+  };
+
   useEffect(() => {
-    setProducts(getCustomSellerItems());
+    loadProducts();
     setOrders(getSellerOrders());
     setWithdrawals(getWithdrawalHistory('SELLER'));
   }, []);
@@ -88,12 +122,124 @@ export default function SellerPortalPage() {
   const totalWithdrawn = withdrawals.reduce((acc, w) => acc + (Number(w.amount) || 0), 0);
   const availableBalance = Math.max(0, totalNetProfit - totalWithdrawn);
 
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          if (isEdit) {
+            setEditUploadedImages((prev) => [...prev, reader.result as string]);
+          } else {
+            setUploadedImages((prev) => [...prev, reader.result as string]);
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleAddUrlImage = (isEdit = false) => {
+    const val = isEdit ? editUrlInput.trim() : urlInput.trim();
+    if (!val) return;
+    if (isEdit) {
+      setEditUploadedImages((prev) => [...prev, val]);
+      setEditUrlInput('');
+    } else {
+      setUploadedImages((prev) => [...prev, val]);
+      setUrlInput('');
+    }
+  };
+
+  const handleRemoveImage = (index: number, isEdit = false) => {
+    if (isEdit) {
+      setEditUploadedImages((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleOpenEdit = (item: MarketItem) => {
+    setEditingId(item.id);
+    setEditTitle(item.title);
+    setEditBrand(item.brand || '');
+    setEditSellerCity(item.sellerCity || userProfile?.city || INDONESIA_CITIES[0]);
+    setEditCategory(item.category as GarmentCategory || 'Wanita');
+    setEditCondition(item.condition);
+    setEditSize(item.size);
+    setEditChestWidthCm(item.measurements?.chestWidthCm || 50);
+    setEditLengthCm(item.measurements?.lengthCm || 68);
+    setEditMaterial(item.material || 'Katun');
+    setEditPrice(item.price);
+    setEditOriginalPrice(item.originalPrice || 0);
+    setEditStory(item.story || '');
+    setEditUploadedImages(item.images && item.images.length > 0 ? [...item.images] : []);
+    setIsEditOpen(true);
+  };
+
+  const handleDeleteProduct = (productId: string, productTitle: string) => {
+    if (confirm(`Yakin ingin menghapus pakaian "${productTitle}" dari katalog?`)) {
+      deletePrelovedItem(productId);
+      loadProducts();
+      addNotification('info', 'Pakaian Dihapus', `${productTitle} berhasil dihapus dari katalog.`);
+    }
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId || !editTitle.trim() || editPrice <= 0) {
+      addNotification('warning', 'Form Belum Lengkap', 'Harap isi nama pakaian dan harga jual yang valid.');
+      return;
+    }
+
+    const finalImages = editUploadedImages.length > 0
+      ? editUploadedImages
+      : ['https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=800&q=80'];
+
+    const updatedItem: MarketItem = {
+      id: editingId,
+      title: editTitle.trim(),
+      brand: editBrand.trim() || 'Thrift Curated',
+      sellerName: mySellerName,
+      sellerCity: editSellerCity || sellerCity,
+      price: Number(editPrice),
+      originalPrice: Number(editOriginalPrice) || undefined,
+      condition: editCondition,
+      category: editCategory,
+      size: editSize,
+      measurements: {
+        chestWidthCm: Number(editChestWidthCm) || 0,
+        lengthCm: Number(editLengthCm) || 0,
+      },
+      material: editMaterial,
+      story: editStory.trim() || 'Pakaian preloved berkualitas dalam kondisi sangat terawat.',
+      images: finalImages,
+      waterSavedLiters: 2700,
+      co2SavedKg: 3.6,
+      isVerifiedQC: true,
+      status: 'AVAILABLE',
+      rating: 5.0,
+      reviewCount: 0,
+    };
+
+    updatePrelovedItem(updatedItem);
+    loadProducts();
+    setIsEditOpen(false);
+    addNotification('success', 'Pakaian Diperbarui', `${editTitle} berhasil diperbarui.`);
+  };
+
   const handleUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || price <= 0) {
       addNotification('warning', 'Form Belum Lengkap', 'Harap isi nama pakaian dan harga jual yang valid.');
       return;
     }
+
+    const finalImages = uploadedImages.length > 0
+      ? uploadedImages
+      : ['https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=800&q=80'];
 
     const newItem: MarketItem = {
       id: `c-item-${Date.now()}`,
@@ -112,7 +258,7 @@ export default function SellerPortalPage() {
       },
       material: material,
       story: story.trim() || 'Pakaian preloved berkualitas dalam kondisi sangat terawat.',
-      images: [imageUrl],
+      images: finalImages,
       waterSavedLiters: 2700,
       co2SavedKg: 3.6,
       isVerifiedQC: true,
@@ -122,8 +268,7 @@ export default function SellerPortalPage() {
     };
 
     saveNewPrelovedItem(newItem);
-    const updated = getCustomSellerItems();
-    setProducts(updated);
+    loadProducts();
     setIsUploadOpen(false);
     addNotification('success', 'Pakaian Berhasil Ditambahkan', `${title} telah terdaftar di katalog pakaian Anda.`);
 
@@ -132,6 +277,7 @@ export default function SellerPortalPage() {
     setBrand('');
     setPrice(85000);
     setStory('');
+    setUploadedImages([]);
   };
 
   const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
@@ -454,16 +600,38 @@ export default function SellerPortalPage() {
                         </p>
                       </div>
 
-                      <div className="pt-2.5 mt-2.5 border-t border-stone-100 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] text-stone-500 block">Harga Jual:</span>
-                          <strong className="text-xs font-black text-stone-900 font-mono">
-                            {formatRupiah(item.price)}
-                          </strong>
+                      <div className="pt-2.5 mt-2.5 border-t border-stone-100">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <div>
+                            <span className="text-[10px] text-stone-500 block">Harga Jual:</span>
+                            <strong className="text-xs font-black text-stone-900 font-mono">
+                              {formatRupiah(item.price)}
+                            </strong>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            Tersedia
+                          </span>
                         </div>
-                        <span className="text-[10px] font-bold text-emerald-900">
-                          Siap Kirim
-                        </span>
+
+                        {/* Action buttons for Seller */}
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(item)}
+                            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-[11px] font-bold transition-all cursor-pointer shadow-xs"
+                          >
+                            <Edit3 size={12} />
+                            <span>Edit Detail</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProduct(item.id, item.title)}
+                            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold transition-all cursor-pointer"
+                          >
+                            <Trash2 size={12} />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -766,6 +934,77 @@ export default function SellerPortalPage() {
               </div>
 
               <form onSubmit={handleUploadSubmit} className="space-y-3.5">
+                {/* ── UPLOAD FOTO SECTION ── */}
+                <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                      <UploadCloud size={14} className="text-amber-800" />
+                      Foto Pakaian Preloved
+                    </label>
+                    <span className="text-[10px] text-stone-500 font-medium">Bisa upload beberapa foto</span>
+                  </div>
+
+                  {/* File Upload Zone */}
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-stone-300 hover:border-amber-700 bg-white rounded-xl p-4 cursor-pointer transition-all hover:bg-amber-50/20 group">
+                    <ImageIcon className="w-7 h-7 text-stone-400 group-hover:text-amber-800 transition-colors mb-1" />
+                    <span className="text-xs font-bold text-stone-800 group-hover:text-amber-900">
+                      Pilih / Tarik Foto Pakaian ke Sini
+                    </span>
+                    <span className="text-[10px] text-stone-500 mt-0.5">Format: JPG, PNG, WEBP (Bisa langsung preview)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleImageFileChange(e, false)}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Previews */}
+                  {uploadedImages.length > 0 && (
+                    <div className="pt-2">
+                      <span className="text-[10px] font-bold text-stone-600 block mb-1.5">Foto Terpilih ({uploadedImages.length}):</span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {uploadedImages.map((img, idx) => (
+                          <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-stone-200 group bg-stone-100">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={img} alt="Preview" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(idx, false)}
+                              className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-full opacity-80 group-hover:opacity-100 transition-opacity"
+                              title="Hapus foto"
+                            >
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* URL Input Fallback */}
+                  <div className="pt-1 border-t border-stone-200">
+                    <span className="text-[10px] text-stone-500 block mb-1">Atau masukkan URL gambar langsung:</span>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        placeholder="https://images.unsplash.com/..."
+                        className="flex-1 px-2.5 py-1.5 rounded-lg border border-stone-300 text-[11px] text-stone-800 bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddUrlImage(false)}
+                        className="px-3 py-1.5 bg-stone-800 hover:bg-stone-900 text-white rounded-lg text-[11px] font-bold"
+                      >
+                        + URL
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-stone-800 mb-1">Judul Produk Pakaian</label>
                   <input
@@ -845,6 +1084,27 @@ export default function SellerPortalPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Lebar Dada (cm)</label>
+                    <input
+                      type="number"
+                      value={chestWidthCm}
+                      onChange={(e) => setChestWidthCm(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Panjang Baju (cm)</label>
+                    <input
+                      type="number"
+                      value={lengthCm}
+                      onChange={(e) => setLengthCm(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
                     <label className="block text-xs font-bold text-stone-800 mb-1">Harga Jual (Rp)</label>
                     <input
                       type="number"
@@ -881,6 +1141,249 @@ export default function SellerPortalPage() {
                   className="w-full py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer mt-1"
                 >
                   Terbitkan Pakaian ke Katalog
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MODAL EDIT PRODUK PRELOVED ── */}
+      <AnimatePresence>
+        {isEditOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 p-5 sm:p-6"
+            >
+              <div className="flex justify-between items-center pb-3 border-b border-stone-100 mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-stone-900 font-serif">
+                    Edit Detail Pakaian
+                  </h3>
+                  <p className="text-xs text-stone-600 mt-0.5">
+                    Perbarui harga, ukuran, cerita, atau ganti foto pakaian preloved ini.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditOpen(false)}
+                  className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-full transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit} className="space-y-3.5">
+                {/* ── EDIT FOTO SECTION ── */}
+                <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                      <UploadCloud size={14} className="text-amber-800" />
+                      Kelola Foto Pakaian
+                    </label>
+                    <span className="text-[10px] text-stone-500 font-medium">Bisa tambah atau hapus foto</span>
+                  </div>
+
+                  {/* File Upload Zone */}
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-stone-300 hover:border-amber-700 bg-white rounded-xl p-4 cursor-pointer transition-all hover:bg-amber-50/20 group">
+                    <ImageIcon className="w-7 h-7 text-stone-400 group-hover:text-amber-800 transition-colors mb-1" />
+                    <span className="text-xs font-bold text-stone-800 group-hover:text-amber-900">
+                      Upload Foto Tambahan / Pengganti
+                    </span>
+                    <span className="text-[10px] text-stone-500 mt-0.5">Pilih dari perangkat Anda</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleImageFileChange(e, true)}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Previews */}
+                  {editUploadedImages.length > 0 && (
+                    <div className="pt-2">
+                      <span className="text-[10px] font-bold text-stone-600 block mb-1.5">Foto Aktif ({editUploadedImages.length}):</span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {editUploadedImages.map((img, idx) => (
+                          <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-stone-200 group bg-stone-100">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={img} alt="Preview" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(idx, true)}
+                              className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-full opacity-80 group-hover:opacity-100 transition-opacity cursor-pointer"
+                              title="Hapus foto"
+                            >
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* URL Input Fallback */}
+                  <div className="pt-1 border-t border-stone-200">
+                    <span className="text-[10px] text-stone-500 block mb-1">Atau masukkan URL gambar:</span>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={editUrlInput}
+                        onChange={(e) => setEditUrlInput(e.target.value)}
+                        placeholder="https://images.unsplash.com/..."
+                        className="flex-1 px-2.5 py-1.5 rounded-lg border border-stone-300 text-[11px] text-stone-800 bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddUrlImage(true)}
+                        className="px-3 py-1.5 bg-stone-800 hover:bg-stone-900 text-white rounded-lg text-[11px] font-bold cursor-pointer"
+                      >
+                        + URL
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-800 mb-1">Judul Produk Pakaian</label>
+                  <input
+                    type="text"
+                    required
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="Contoh: Kemeja Flanel Uniqlo Oversized"
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Brand / Merk</label>
+                    <input
+                      type="text"
+                      value={editBrand}
+                      onChange={(e) => setEditBrand(e.target.value)}
+                      placeholder="Uniqlo, Zara, dsb"
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Kategori</label>
+                    <select
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value as any)}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white"
+                    >
+                      <option value="Wanita">Wanita</option>
+                      <option value="Pria">Pria</option>
+                      <option value="Denim & Jeans">Denim & Jeans</option>
+                      <option value="Outerwear">Outerwear</option>
+                      <option value="Vintage">Vintage</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Kondisi</label>
+                    <select
+                      value={editCondition}
+                      onChange={(e) => setEditCondition(e.target.value as any)}
+                      className="w-full px-2.5 py-2 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white"
+                    >
+                      <option value="LIKE_NEW">Like New (99%)</option>
+                      <option value="GENTLY_USED">Gently Used (90%)</option>
+                      <option value="VINTAGE">Vintage</option>
+                      <option value="UPCYCLED">Upcycled</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Ukuran / Size</label>
+                    <input
+                      type="text"
+                      value={editSize}
+                      onChange={(e) => setEditSize(e.target.value)}
+                      placeholder="M / L / XL"
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Kota Seller</label>
+                    <select
+                      value={editSellerCity}
+                      onChange={(e) => setEditSellerCity(e.target.value)}
+                      className="w-full px-2 py-2 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white"
+                    >
+                      {INDONESIA_CITIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Lebar Dada (cm)</label>
+                    <input
+                      type="number"
+                      value={editChestWidthCm}
+                      onChange={(e) => setEditChestWidthCm(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Panjang Baju (cm)</label>
+                    <input
+                      type="number"
+                      value={editLengthCm}
+                      onChange={(e) => setEditLengthCm(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Harga Jual (Rp)</label>
+                    <input
+                      type="number"
+                      required
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(Number(e.target.value))}
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-bold text-stone-900 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Harga Retail Asli (Rp)</label>
+                    <input
+                      type="number"
+                      value={editOriginalPrice}
+                      onChange={(e) => setEditOriginalPrice(Number(e.target.value))}
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-800 mb-1">Cerita Pakaian / Kondisi Detail</label>
+                  <textarea
+                    rows={2}
+                    value={editStory}
+                    onChange={(e) => setEditStory(e.target.value)}
+                    placeholder="Ceritakan keistimewaan, bahan kain, dan riwayat pakaian ini..."
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer mt-1"
+                >
+                  Simpan Perubahan Pakaian
                 </button>
               </form>
             </motion.div>

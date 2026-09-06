@@ -303,7 +303,7 @@ export function getAllMarketItemsWithSellers(): MarketItem[] {
 
 export function saveNewPrelovedItem(item: MarketItem): void {
   const current = getCustomSellerItems();
-  const updated = [item, ...current];
+  const updated = [item, ...current.filter(p => p.id !== item.id)];
   setLocal('clothloop_seller_items', updated);
 
   try {
@@ -330,6 +330,49 @@ export function saveNewPrelovedItem(item: MarketItem): void {
       rating: item.rating,
       review_count: item.reviewCount,
     }).then(() => {});
+  } catch {}
+}
+
+export function updatePrelovedItem(item: MarketItem): void {
+  const current = getCustomSellerItems();
+  const updated = current.map(p => p.id === item.id ? item : p);
+  setLocal('clothloop_seller_items', updated);
+
+  try {
+    const supabase = createClient();
+    supabase.from('market_items').upsert({
+      id: item.id,
+      title: item.title,
+      brand: item.brand,
+      seller_name: item.sellerName,
+      seller_city: item.sellerCity,
+      price: item.price,
+      original_price: item.originalPrice,
+      condition: item.condition,
+      category: item.category,
+      size: item.size,
+      measurements: item.measurements,
+      material: item.material,
+      story: item.story,
+      images: item.images,
+      water_saved_liters: item.waterSavedLiters,
+      co2_saved_kg: item.co2SavedKg,
+      is_verified_qc: item.isVerifiedQC,
+      status: item.status,
+      rating: item.rating,
+      review_count: item.reviewCount,
+    }).then(() => {});
+  } catch {}
+}
+
+export function deletePrelovedItem(itemId: string): void {
+  const current = getCustomSellerItems();
+  const updated = current.filter(p => p.id !== itemId);
+  setLocal('clothloop_seller_items', updated);
+
+  try {
+    const supabase = createClient();
+    supabase.from('market_items').delete().eq('id', itemId).then(() => {});
   } catch {}
 }
 
@@ -363,7 +406,7 @@ export function getAllCraftProductsWithArtisans(): CraftProduct[] {
 
 export function saveNewCraftProduct(product: CraftProduct): void {
   const current = getCustomCraftProducts();
-  const updated = [product, ...current];
+  const updated = [product, ...current.filter(p => p.id !== product.id)];
   setLocal('clothloop_artisan_crafts', updated);
 
   try {
@@ -388,6 +431,47 @@ export function saveNewCraftProduct(product: CraftProduct): void {
       water_saved_liters: product.waterSavedLiters,
       co2_saved_kg: product.co2SavedKg,
     }).then(() => {});
+  } catch {}
+}
+
+export function updateCraftProduct(product: CraftProduct): void {
+  const current = getCustomCraftProducts();
+  const updated = current.map(p => p.id === product.id ? product : p);
+  setLocal('clothloop_artisan_crafts', updated);
+
+  try {
+    const supabase = createClient();
+    supabase.from('craft_products').upsert({
+      id: product.id,
+      title: product.title,
+      artisan_name: product.artisanName,
+      artisan_studio: product.artisanStudio,
+      artisan_city: product.artisanCity,
+      price: product.price,
+      original_price: product.originalPrice,
+      category: product.category,
+      technique: product.technique,
+      material_saved: product.materialSaved,
+      dimensions: product.dimensions,
+      story: product.story,
+      images: product.images,
+      stock_count: product.stockCount,
+      rating: product.rating,
+      review_count: product.reviewCount,
+      water_saved_liters: product.waterSavedLiters,
+      co2_saved_kg: product.co2SavedKg,
+    }).then(() => {});
+  } catch {}
+}
+
+export function deleteCraftProduct(productId: string): void {
+  const current = getCustomCraftProducts();
+  const updated = current.filter(p => p.id !== productId);
+  setLocal('clothloop_artisan_crafts', updated);
+
+  try {
+    const supabase = createClient();
+    supabase.from('craft_products').delete().eq('id', productId).then(() => {});
   } catch {}
 }
 

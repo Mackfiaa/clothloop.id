@@ -1,24 +1,33 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, ShoppingBag, MapPin, Heart } from 'lucide-react';
+import { ArrowRight, ShoppingBag, MapPin, Heart, Sparkles, PlusCircle } from 'lucide-react';
 import { formatRupiah } from '@/lib/utils';
-import { CRAFT_PRODUCTS_MOCK } from '@/lib/supabase/data';
+import { fetchCraftProducts } from '@/lib/supabase/data';
+import { getAllCraftProductsWithArtisans } from '@/lib/supabase/portalData';
 import { useApp } from '@/lib/store';
 import { CraftProduct, CraftOrderItem } from '@/lib/types';
 import { CheckoutModal } from '@/components/craft/CheckoutModal';
 
 export function CraftShowcase() {
   const { addToCart, addNotification, currentUser } = useApp();
+  const [crafts, setCrafts] = useState<CraftProduct[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [directCheckoutItems, setDirectCheckoutItems] = useState<CraftOrderItem[] | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
-  // Exactly 4 items
-  const featuredCrafts = CRAFT_PRODUCTS_MOCK.slice(0, 4);
+  useEffect(() => {
+    fetchCraftProducts().then((fetched) => {
+      const liveCrafts = getAllCraftProductsWithArtisans();
+      const combined = [...liveCrafts, ...fetched.filter((f) => !liveCrafts.some((lc) => lc.id === f.id))];
+      setCrafts(combined);
+    });
+  }, []);
+
+  const featuredCrafts = crafts.slice(0, 4);
 
   const toggleWishlist = (id: string, title: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -112,106 +121,129 @@ export function CraftShowcase() {
           </Link>
         </div>
 
-        {/* ── 4 Grid Cards - Exactly identical to /craft catalog card design ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {featuredCrafts.map((p, idx) => {
-            const isFav = wishlist.includes(p.id);
+        {/* ── Products Grid or Empty State ── */}
+        {featuredCrafts.length === 0 ? (
+          <div className="bg-white rounded-3xl p-10 sm:p-14 text-center border border-[var(--border-hairline)] max-w-xl mx-auto flex flex-col items-center gap-4 shadow-2xs">
+            <div className="w-16 h-16 rounded-3xl bg-amber-50 text-amber-800 flex items-center justify-center font-bold shadow-xs">
+              <Sparkles size={28} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-[var(--ink-primary)]">
+                Katalog Kerajinan Masih Kosong
+              </h3>
+              <p className="text-xs sm:text-sm text-[var(--ink-secondary)] mt-1.5 leading-relaxed max-w-md">
+                Belum ada produk karya daur ulang yang diunggah oleh perajin. Studio UMKM & Perajin dapat mengunggah karya langsung melalui dashboard!
+              </p>
+            </div>
+            <Link
+              href="/craftsman"
+              className="inline-flex items-center gap-2 bg-emerald-800 hover:bg-emerald-900 text-white text-xs sm:text-sm font-extrabold py-3 px-6 rounded-2xl shadow-md transition-all hover:scale-102 mt-2"
+            >
+              <PlusCircle size={16} />
+              <span>Unggah Produk di Dashboard Perajin</span>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {featuredCrafts.map((p, idx) => {
+              const isFav = wishlist.includes(p.id);
 
-            return (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 0, y: 15 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.2 }}
-                transition={{ duration: 0.35, delay: idx * 0.05 }}
-                className="bg-white rounded-3xl border border-[var(--border-hairline)] overflow-hidden shadow-2xs hover:shadow-lg transition-all flex flex-col justify-between group"
-              >
-                {/* 1. Photo Area */}
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-100">
-                  <Image
-                    src={p.images[0]}
-                    alt={p.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                  />
+              return (
+                <motion.div
+                  key={p.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.2 }}
+                  transition={{ duration: 0.35, delay: idx * 0.05 }}
+                  className="bg-white rounded-3xl border border-[var(--border-hairline)] overflow-hidden shadow-2xs hover:shadow-lg transition-all flex flex-col justify-between group"
+                >
+                  {/* 1. Photo Area */}
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-stone-100">
+                    <Image
+                      src={p.images[0]}
+                      alt={p.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    />
 
-                  {/* Stock Badge */}
-                  <div className="absolute top-3 left-3">
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-md text-white border border-white/20 shadow-xs">
-                      Stok: {p.stockCount}
-                    </span>
-                  </div>
-
-                  {/* Like Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => toggleWishlist(p.id, p.title, e)}
-                    className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110 shadow-md ${
-                      isFav ? 'bg-rose-500 text-white' : 'bg-white/85 backdrop-blur-md text-gray-700 hover:text-rose-500'
-                    }`}
-                  >
-                    <Heart size={14} className={isFav ? 'fill-white' : ''} />
-                  </button>
-                </div>
-
-                {/* 2. Card Details */}
-                <div className="p-5 flex flex-col justify-between flex-1 gap-4">
-                  <div>
-                    {/* Artisan Studio & City */}
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="font-extrabold text-amber-800 truncate">{p.artisanStudio}</span>
-                      <span className="text-[11px] text-gray-500 font-medium shrink-0 flex items-center gap-1">
-                        <MapPin size={11} className="text-gray-400" />
-                        {p.artisanCity}
+                    {/* Stock Badge */}
+                    <div className="absolute top-3 left-3">
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-black/65 backdrop-blur-md text-white border border-white/20 shadow-xs">
+                        Stok: {p.stockCount}
                       </span>
                     </div>
 
-                    {/* Product Title */}
-                    <h3 className="font-black text-base text-gray-900 leading-snug line-clamp-1 group-hover:text-emerald-800 transition-colors">
-                      {p.title}
-                    </h3>
+                    {/* Like Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => toggleWishlist(p.id, p.title, e)}
+                      className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110 shadow-md ${
+                        isFav ? 'bg-rose-500 text-white' : 'bg-white/85 backdrop-blur-md text-gray-700 hover:text-rose-500'
+                      }`}
+                    >
+                      <Heart size={14} className={isFav ? 'fill-white' : ''} />
+                    </button>
                   </div>
 
-                  {/* Price & 2 Action Buttons */}
-                  <div className="pt-3 border-t border-[var(--border-hairline)] flex flex-col gap-3">
+                  {/* 2. Card Details */}
+                  <div className="p-5 flex flex-col justify-between flex-1 gap-4">
                     <div>
-                      <span className="text-[10px] text-gray-400 block font-medium">Harga Kerajinan</span>
-                      <strong className="text-lg font-black text-emerald-900 font-mono">
-                        {formatRupiah(p.price)}
-                      </strong>
+                      {/* Artisan Studio & City */}
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-extrabold text-amber-800 truncate">{p.artisanStudio}</span>
+                        <span className="text-[11px] text-gray-500 font-medium shrink-0 flex items-center gap-1">
+                          <MapPin size={11} className="text-gray-400" />
+                          {p.artisanCity}
+                        </span>
+                      </div>
+
+                      {/* Product Title */}
+                      <h3 className="font-black text-base text-gray-900 leading-snug line-clamp-1 group-hover:text-emerald-800 transition-colors">
+                        {p.title}
+                      </h3>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* Button Keranjang */}
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        type="button"
-                        onClick={(e) => handleAddToCart(p, e)}
-                        className="btn-secondary justify-center text-xs py-2 px-2 font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <ShoppingBag size={13} />
-                        <span>Keranjang</span>
-                      </motion.button>
+                    {/* Price & 2 Action Buttons */}
+                    <div className="pt-3 border-t border-[var(--border-hairline)] flex flex-col gap-3">
+                      <div>
+                        <span className="text-[10px] text-gray-400 block font-medium">Harga Kerajinan</span>
+                        <strong className="text-lg font-black text-emerald-900 font-mono">
+                          {formatRupiah(p.price)}
+                        </strong>
+                      </div>
 
-                      {/* Button Checkout */}
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        type="button"
-                        onClick={(e) => handleDirectCheckout(p, e)}
-                        className="btn-primary justify-center text-xs py-2 px-2 font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <span>Checkout</span>
-                        <ArrowRight size={13} />
-                      </motion.button>
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Button Keranjang */}
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          type="button"
+                          onClick={(e) => handleAddToCart(p, e)}
+                          className="btn-secondary justify-center text-xs py-2 px-2 font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <ShoppingBag size={13} />
+                          <span>Keranjang</span>
+                        </motion.button>
+
+                        {/* Button Checkout */}
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          type="button"
+                          onClick={(e) => handleDirectCheckout(p, e)}
+                          className="btn-primary justify-center text-xs py-2 px-2 font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>Checkout</span>
+                          <ArrowRight size={13} />
+                        </motion.button>
+                      </div>
                     </div>
+
                   </div>
-
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
 
       </div>
 

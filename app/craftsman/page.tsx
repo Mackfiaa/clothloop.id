@@ -25,7 +25,11 @@ import {
   Maximize2,
   ScanLine,
   Printer,
-  Download
+  Download,
+  Edit3,
+  Trash2,
+  UploadCloud,
+  ImageIcon
 } from 'lucide-react';
 import { RolePortalNavbar } from '@/components/portal/RolePortalNavbar';
 import { useApp } from '@/lib/store';
@@ -34,6 +38,8 @@ import { formatRupiah } from '@/lib/utils';
 import { 
   getAllCraftProductsWithArtisans, 
   saveNewCraftProduct,
+  updateCraftProduct,
+  deleteCraftProduct,
   getCustomCraftProducts,
   getArtisanInventory,
   addFabricStockToArtisan,
@@ -43,6 +49,7 @@ import {
   submitBankWithdrawal,
   getWithdrawalHistory
 } from '@/lib/supabase/portalData';
+import { fetchCraftProducts } from '@/lib/supabase/data';
 import { INDONESIA_CITIES } from '@/lib/constants';
 
 function StudioQrSvg({ value, size = 160, className = '' }: { value: string; size?: number; className?: string }) {
@@ -160,7 +167,25 @@ export default function CraftsmanPortalPage() {
   const [originalPrice, setOriginalPrice] = useState(220000);
   const [dimensions, setDimensions] = useState('35 x 40 cm');
   const [story, setStory] = useState('');
-  const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=800&auto=format&fit=crop');
+  const [stockCount, setStockCount] = useState(10);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [urlInput, setUrlInput] = useState('');
+
+  // Edit Craft Modal State
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editArtisanCity, setEditArtisanCity] = useState('');
+  const [editCategory, setEditCategory] = useState<CraftProductCategory>('Tas & Pouch');
+  const [editTechnique, setEditTechnique] = useState('');
+  const [editMaterialSaved, setEditMaterialSaved] = useState('');
+  const [editPrice, setEditPrice] = useState(0);
+  const [editOriginalPrice, setEditOriginalPrice] = useState(0);
+  const [editDimensions, setEditDimensions] = useState('');
+  const [editStory, setEditStory] = useState('');
+  const [editStockCount, setEditStockCount] = useState(1);
+  const [editUploadedImages, setEditUploadedImages] = useState<string[]>([]);
+  const [editUrlInput, setEditUrlInput] = useState('');
 
   // Withdrawal form state
   const [bankName, setBankName] = useState('Bank Central Asia (BCA)');
@@ -170,36 +195,147 @@ export default function CraftsmanPortalPage() {
 
   const studioName = userProfile?.business_name || userProfile?.full_name || 'Studio Daur Asri';
 
+  const loadProducts = () => {
+    fetchCraftProducts().then((fetched) => {
+      const local = getCustomCraftProducts();
+      const combined = [...local, ...fetched.filter(f => !local.some(l => l.id === f.id))];
+      setProducts(combined);
+    });
+  };
+
   useEffect(() => {
-    setProducts(getCustomCraftProducts());
+    loadProducts();
     setInventory(getArtisanInventory(studioName));
     setOrders(getArtisanOrders());
     setWithdrawals(getWithdrawalHistory('ARTISAN'));
   }, [studioName]);
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(inventory.studioVerificationCode);
+  const totalGMV = orders.reduce((acc, o) => acc + (o.price || 0), 0);
+  const artisanNetProfit = Math.round(totalGMV * 0.90);
+  const totalWithdrawn = withdrawals.reduce((acc, w) => acc + (Number(w.amount) || 0), 0);
+  const availableBalance = Math.max(0, artisanNetProfit - totalWithdrawn);
+
+  const handleCopyCode = (text?: string | React.MouseEvent) => {
+    const code = typeof text === 'string' ? text : 'AS-BDG-204';
+    navigator.clipboard.writeText(code);
     setCopiedCode(true);
-    addNotification('info', 'Kode Tersalin', `Kode ${inventory.studioVerificationCode} siap ditunjukkan kepada kurir.`);
+    addNotification('info', 'Kode Tersalin', `Kode studio (${code}) berhasil disalin ke clipboard.`);
     setTimeout(() => setCopiedCode(false), 2500);
   };
 
   const handleManualReceiptSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (receiptPieces <= 0) {
-      addNotification('warning', 'Data Kurang', 'Masukkan jumlah helai pakaian yang valid.');
-      return;
-    }
-    addFabricStockToArtisan(studioName, Number(receiptPieces), Number(receiptPieces) * 0.4);
+    if (receiptPieces <= 0) return;
+    addFabricStockToArtisan(
+      studioName,
+      Number(receiptPieces),
+      Number((receiptPieces * 0.4).toFixed(1))
+    );
     setInventory(getArtisanInventory(studioName));
     setIsManualReceiptOpen(false);
-    addNotification('success', 'Bahan Kain Diterima', `Berhasil mencatat ${receiptPieces} helai bahan pakaian dari ${receiptSource}.`);
+    addNotification('success', 'Tekstil Diterima', `${receiptPieces} pcs bahan kain berhasil dicatat ke inventori.`);
   };
 
-  const totalGMV = orders.reduce((acc, o) => acc + (o.price || 0), 0);
-  const artisanNetProfit = Math.round(totalGMV * 0.60);
-  const totalWithdrawn = withdrawals.reduce((acc, w) => acc + (Number(w.amount) || 0), 0);
-  const availableBalance = Math.max(0, artisanNetProfit - totalWithdrawn);
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          if (isEdit) {
+            setEditUploadedImages((prev) => [...prev, reader.result as string]);
+          } else {
+            setUploadedImages((prev) => [...prev, reader.result as string]);
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleAddUrlImage = (isEdit = false) => {
+    const val = isEdit ? editUrlInput.trim() : urlInput.trim();
+    if (!val) return;
+    if (isEdit) {
+      setEditUploadedImages((prev) => [...prev, val]);
+      setEditUrlInput('');
+    } else {
+      setUploadedImages((prev) => [...prev, val]);
+      setUrlInput('');
+    }
+  };
+
+  const handleRemoveImage = (index: number, isEdit = false) => {
+    if (isEdit) {
+      setEditUploadedImages((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      setUploadedImages((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleOpenEdit = (item: CraftProduct) => {
+    setEditingId(item.id);
+    setEditTitle(item.title);
+    setEditArtisanCity(item.artisanCity || userProfile?.city || INDONESIA_CITIES[0]);
+    setEditCategory(item.category);
+    setEditTechnique(item.technique);
+    setEditMaterialSaved(item.materialSaved);
+    setEditPrice(item.price);
+    setEditOriginalPrice(item.originalPrice || 0);
+    setEditDimensions(item.dimensions || '');
+    setEditStory(item.story);
+    setEditStockCount(item.stockCount || 1);
+    setEditUploadedImages(item.images && item.images.length > 0 ? [...item.images] : []);
+    setIsEditOpen(true);
+  };
+
+  const handleDeleteProduct = (productId: string, productTitle: string) => {
+    if (confirm(`Yakin ingin menghapus produk "${productTitle}" dari katalog kerajinan?`)) {
+      deleteCraftProduct(productId);
+      loadProducts();
+      addNotification('info', 'Karya Dihapus', `${productTitle} berhasil dihapus dari katalog.`);
+    }
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId || !editTitle.trim() || editPrice <= 0) {
+      addNotification('warning', 'Form Belum Lengkap', 'Harap isi nama karya dan harga jual yang valid.');
+      return;
+    }
+
+    const finalImages = editUploadedImages.length > 0 
+      ? editUploadedImages 
+      : ['https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=800&auto=format&fit=crop'];
+
+    const updatedProduct: CraftProduct = {
+      id: editingId,
+      title: editTitle.trim(),
+      artisanName: userProfile?.full_name || 'Perajin Lokal',
+      artisanStudio: studioName,
+      artisanCity: editArtisanCity || artisanCity,
+      price: Number(editPrice),
+      originalPrice: Number(editOriginalPrice) || undefined,
+      category: editCategory,
+      technique: editTechnique,
+      materialSaved: editMaterialSaved,
+      dimensions: editDimensions,
+      story: editStory.trim() || 'Karya daur ulang pakaian bernilai tinggi buatan tangan perajin lokal ClothLoop.',
+      images: finalImages,
+      stockCount: Number(editStockCount) || 1,
+      rating: 5.0,
+      reviewCount: 0,
+      waterSavedLiters: 3200,
+      co2SavedKg: 4.8,
+    };
+
+    updateCraftProduct(updatedProduct);
+    loadProducts();
+    setIsEditOpen(false);
+    addNotification('success', 'Karya Berhasil Diperbarui', `${editTitle} dan stok berhasil diperbarui.`);
+  };
 
   const handleUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,6 +343,10 @@ export default function CraftsmanPortalPage() {
       addNotification('warning', 'Form Belum Lengkap', 'Harap isi nama karya dan harga jual yang valid.');
       return;
     }
+
+    const finalImages = uploadedImages.length > 0
+      ? uploadedImages
+      : ['https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=800&auto=format&fit=crop'];
 
     const newProduct: CraftProduct = {
       id: `c-craft-${Date.now()}`,
@@ -221,8 +361,8 @@ export default function CraftsmanPortalPage() {
       materialSaved: materialSaved,
       dimensions: dimensions,
       story: story.trim() || 'Karya daur ulang pakaian bernilai tinggi buatan tangan perajin lokal ClothLoop.',
-      images: [imageUrl],
-      stockCount: 5,
+      images: finalImages,
+      stockCount: Number(stockCount) || 1,
       rating: 5.0,
       reviewCount: 0,
       waterSavedLiters: 3200,
@@ -230,14 +370,16 @@ export default function CraftsmanPortalPage() {
     };
 
     saveNewCraftProduct(newProduct);
-    setProducts(getCustomCraftProducts());
+    loadProducts();
     setIsUploadOpen(false);
-    addNotification('success', 'Karya Berhasil Ditambahkan', `${title} telah terdaftar di katalog kerajinan Anda.`);
+    addNotification('success', 'Karya Berhasil Ditambahkan', `${title} (Stok: ${stockCount}) telah terdaftar di katalog kerajinan Anda.`);
 
     // Reset Form
     setTitle('');
     setPrice(145000);
     setStory('');
+    setStockCount(10);
+    setUploadedImages([]);
   };
 
   const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
@@ -623,12 +765,19 @@ export default function CraftsmanPortalPage() {
                   <div key={item.id} className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs flex flex-col justify-between hover:border-stone-300 transition-all">
                     <div className="relative aspect-4/3 w-full bg-stone-100 overflow-hidden">
                       <Image src={item.images[0] || 'https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=800&auto=format&fit=crop'} alt={item.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 25vw" />
+                      
+                      {/* Technique Badge */}
                       <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold">
                         {item.technique}
                       </span>
+
+                      {/* Stock Count Badge */}
+                      <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-emerald-800/90 backdrop-blur-xs text-white text-[10px] font-mono font-bold shadow-xs">
+                        Stok: {item.stockCount ?? 1} Unit
+                      </span>
                     </div>
 
-                    <div className="p-3.5 flex flex-col flex-1 justify-between">
+                    <div className="p-3.5 flex flex-col flex-1 justify-between gap-3">
                       <div>
                         <span className="text-[10px] text-amber-800 font-bold uppercase tracking-wider block">
                           {item.category} &bull; {item.dimensions}
@@ -641,16 +790,40 @@ export default function CraftsmanPortalPage() {
                         </p>
                       </div>
 
-                      <div className="pt-2.5 mt-2.5 border-t border-stone-100 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] text-stone-500 block">Harga Jual:</span>
-                          <strong className="text-xs font-black text-stone-900 font-mono">
-                            {formatRupiah(item.price)}
-                          </strong>
+                      <div className="pt-2.5 border-t border-stone-100 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] text-stone-500 block">Harga Jual:</span>
+                            <strong className="text-xs font-black text-stone-900 font-mono">
+                              {formatRupiah(item.price)}
+                            </strong>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            (item.stockCount ?? 1) > 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-700'
+                          }`}>
+                            {(item.stockCount ?? 1) > 0 ? 'Tersedia' : 'Stok Habis'}
+                          </span>
                         </div>
-                        <span className="text-[10px] font-bold text-emerald-900">
-                          Siap Pesan
-                        </span>
+
+                        {/* Action Buttons: Edit & Delete */}
+                        <div className="grid grid-cols-2 gap-1.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(item)}
+                            className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-850 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Edit3 size={12} />
+                            <span>Edit / Stok</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProduct(item.id, item.title)}
+                            className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Trash2 size={12} />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1075,7 +1248,7 @@ export default function CraftsmanPortalPage() {
                     Upload Karya Kerajinan Baru
                   </h3>
                   <p className="text-xs text-stone-600 mt-0.5">
-                    Karya akan tersimpan di katalog studio Anda.
+                    Karya akan tersimpan di katalog studio Anda dan langsung tampil di marketplace kerajinan.
                   </p>
                 </div>
                 <button
@@ -1087,7 +1260,70 @@ export default function CraftsmanPortalPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleUploadSubmit} className="space-y-3.5">
+              <form onSubmit={handleUploadSubmit} className="space-y-4">
+                {/* 1. Upload Foto Karya */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                    <span>Foto Produk Karya (Wajib)</span>
+                    <span className="text-[11px] text-stone-500 font-normal">Format JPG, PNG, WebP</span>
+                  </label>
+
+                  {/* File Upload Drop Area */}
+                  <div className="border-2 border-dashed border-stone-300 hover:border-emerald-700 bg-stone-50 rounded-2xl p-4 text-center transition-colors relative cursor-pointer group">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleImageFileChange(e, false)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <div className="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <UploadCloud size={20} />
+                      </div>
+                      <span className="text-xs font-bold text-stone-900">Klik atau Tarik Foto ke Sini</span>
+                      <span className="text-[10px] text-stone-500">Pilih satu atau beberapa foto dari perangkat Anda</span>
+                    </div>
+                  </div>
+
+                  {/* Image Previews */}
+                  {uploadedImages.length > 0 && (
+                    <div className="flex items-center gap-2.5 mt-2.5 overflow-x-auto pb-1">
+                      {uploadedImages.map((img, idx) => (
+                        <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-stone-200 shrink-0 group">
+                          <Image src={img} alt={`Preview ${idx + 1}`} fill className="object-cover" sizes="64px" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(idx, false)}
+                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs opacity-80 hover:opacity-100 transition-opacity"
+                          >
+                            <X size={11} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* URL Input Fallback */}
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="text"
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      placeholder="Atau tempel URL gambar langsung..."
+                      className="flex-1 px-3 py-1.5 rounded-xl border border-stone-200 text-xs bg-white text-stone-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleAddUrlImage(false)}
+                      className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      + URL
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Nama Produk */}
                 <div>
                   <label className="block text-xs font-bold text-stone-800 mb-1">Nama Karya Kerajinan</label>
                   <input
@@ -1100,6 +1336,7 @@ export default function CraftsmanPortalPage() {
                   />
                 </div>
 
+                {/* 3. Kategori & Jumlah Stok */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-stone-800 mb-1">Kategori</label>
@@ -1114,6 +1351,24 @@ export default function CraftsmanPortalPage() {
                       <option value="Home Living & Dekorasi">Home Living & Dekorasi</option>
                     </select>
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center justify-between">
+                      <span>Jumlah Stok (Unit)</span>
+                      <span className="text-[10px] text-emerald-800 font-bold">Stok Awal</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={stockCount}
+                      onChange={(e) => setStockCount(Math.max(1, Number(e.target.value)))}
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-bold text-stone-900 bg-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-stone-800 mb-1">Teknik Kerajinan</label>
                     <input
@@ -1124,9 +1379,22 @@ export default function CraftsmanPortalPage() {
                       className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Kota Studio</label>
+                    <select
+                      value={artisanCity}
+                      onChange={(e) => setArtisanCity(e.target.value)}
+                      className="w-full px-2 py-2 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white"
+                    >
+                      {INDONESIA_CITIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-stone-800 mb-1">Bahan Baku Daur Ulang</label>
                     <input
@@ -1147,18 +1415,6 @@ export default function CraftsmanPortalPage() {
                       className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-stone-800 mb-1">Kota Studio</label>
-                    <select
-                      value={artisanCity}
-                      onChange={(e) => setArtisanCity(e.target.value)}
-                      className="w-full px-2 py-2 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white"
-                    >
-                      {INDONESIA_CITIES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -1169,7 +1425,7 @@ export default function CraftsmanPortalPage() {
                       required
                       value={price}
                       onChange={(e) => setPrice(Number(e.target.value))}
-                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-bold text-stone-900 bg-white"
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-bold text-stone-900 bg-white font-mono"
                     />
                   </div>
                   <div>
@@ -1178,7 +1434,7 @@ export default function CraftsmanPortalPage() {
                       type="number"
                       value={originalPrice}
                       onChange={(e) => setOriginalPrice(Number(e.target.value))}
-                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white font-mono"
                     />
                   </div>
                 </div>
@@ -1200,6 +1456,239 @@ export default function CraftsmanPortalPage() {
                 >
                   Terbitkan Karya ke Katalog
                 </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MODAL EDIT PRODUK CRAFT & KELOLA STOK ── */}
+      <AnimatePresence>
+        {isEditOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 p-5 sm:p-6"
+            >
+              <div className="flex justify-between items-center pb-3 border-b border-stone-100 mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-stone-900 font-serif">
+                    Edit Karya & Kelola Stok
+                  </h3>
+                  <p className="text-xs text-stone-600 mt-0.5">
+                    Perbarui informasi karya atau tambahkan jumlah stok produk.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditOpen(false)}
+                  className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-full transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit} className="space-y-4">
+                {/* 1. Foto Karya Preview & Upload Baru */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center justify-between">
+                    <span>Foto Produk Karya</span>
+                    <span className="text-[11px] text-stone-500 font-normal">Format JPG, PNG, WebP</span>
+                  </label>
+
+                  {/* File Upload Drop Area */}
+                  <div className="border-2 border-dashed border-stone-300 hover:border-emerald-700 bg-stone-50 rounded-2xl p-3 text-center transition-colors relative cursor-pointer group">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleImageFileChange(e, true)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <div className="flex flex-col items-center justify-center gap-1 pointer-events-none">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <UploadCloud size={16} />
+                      </div>
+                      <span className="text-xs font-bold text-stone-900">Upload / Tambah Foto Baru</span>
+                    </div>
+                  </div>
+
+                  {/* Image Previews */}
+                  {editUploadedImages.length > 0 && (
+                    <div className="flex items-center gap-2.5 mt-2.5 overflow-x-auto pb-1">
+                      {editUploadedImages.map((img, idx) => (
+                        <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-stone-200 shrink-0 group">
+                          <Image src={img} alt={`Preview ${idx + 1}`} fill className="object-cover" sizes="64px" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(idx, true)}
+                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs opacity-80 hover:opacity-100 transition-opacity"
+                          >
+                            <X size={11} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* URL Input Fallback */}
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="text"
+                      value={editUrlInput}
+                      onChange={(e) => setEditUrlInput(e.target.value)}
+                      placeholder="Atau tempel URL gambar..."
+                      className="flex-1 px-3 py-1.5 rounded-xl border border-stone-200 text-xs bg-white text-stone-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleAddUrlImage(true)}
+                      className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      + URL
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Nama Produk */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-800 mb-1">Nama Karya Kerajinan</label>
+                  <input
+                    type="text"
+                    required
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                  />
+                </div>
+
+                {/* 3. Kategori & Jumlah Stok */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Kategori</label>
+                    <select
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value as any)}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white"
+                    >
+                      <option value="Tas & Pouch">Tas & Pouch</option>
+                      <option value="Jaket & Outer Rekonstruksi">Jaket & Outer Rekonstruksi</option>
+                      <option value="Topi & Aksesoris">Topi & Aksesoris</option>
+                      <option value="Home Living & Dekorasi">Home Living & Dekorasi</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1 flex items-center justify-between">
+                      <span>Jumlah Stok (Unit)</span>
+                      <span className="text-[10px] text-emerald-800 font-bold">Kelola Stok</span>
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={editStockCount}
+                      onChange={(e) => setEditStockCount(Math.max(0, Number(e.target.value)))}
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-bold text-stone-900 bg-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Teknik Kerajinan</label>
+                    <input
+                      type="text"
+                      value={editTechnique}
+                      onChange={(e) => setEditTechnique(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Kota Studio</label>
+                    <select
+                      value={editArtisanCity}
+                      onChange={(e) => setEditArtisanCity(e.target.value)}
+                      className="w-full px-2 py-2 rounded-xl border border-stone-300 text-xs font-semibold text-stone-900 bg-white"
+                    >
+                      {INDONESIA_CITIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Bahan Baku Daur Ulang</label>
+                    <input
+                      type="text"
+                      value={editMaterialSaved}
+                      onChange={(e) => setEditMaterialSaved(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Dimensi Produk</label>
+                    <input
+                      type="text"
+                      value={editDimensions}
+                      onChange={(e) => setEditDimensions(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Harga Jual (Rp)</label>
+                    <input
+                      type="number"
+                      required
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(Number(e.target.value))}
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-bold text-stone-900 bg-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1">Harga Retail Pasar (Rp)</label>
+                    <input
+                      type="number"
+                      value={editOriginalPrice}
+                      onChange={(e) => setEditOriginalPrice(Number(e.target.value))}
+                      className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-800 mb-1">Deskripsi & Cerita Upcycling Karya</label>
+                  <textarea
+                    rows={2}
+                    value={editStory}
+                    onChange={(e) => setEditStory(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-stone-300 text-xs font-medium text-stone-900 bg-white"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditOpen(false)}
+                    className="flex-1 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-2 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                  >
+                    Simpan Perubahan & Update Stok
+                  </button>
+                </div>
               </form>
             </motion.div>
           </div>
