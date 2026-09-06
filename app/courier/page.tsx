@@ -193,7 +193,7 @@ export default function CourierPortalPage() {
         ]}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6">
         {/* DOMICILE / ADDRESS BANNER */}
         {!courier.isAddressConfirmed || isEditingProfile ? (
           <div className="mb-8 bg-white border border-stone-200 rounded-3xl p-6 sm:p-7 shadow-xs">

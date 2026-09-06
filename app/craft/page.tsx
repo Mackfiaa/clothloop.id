@@ -251,7 +251,7 @@ export default function CraftMarketplacePage() {
 
       {/* ── 2. MAIN NAVIGATION TABS ─────────────────────────────────── */}
       <div className="container-site pt-8 pb-3">
-        <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+        <div className="flex items-center gap-2 border-b border-gray-200 pb-2 overflow-x-auto scrollbar-none">
           <button
             onClick={() => setActiveMainTab('CATALOG')}
             className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold transition-all flex items-center gap-2 cursor-pointer ${

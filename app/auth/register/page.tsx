@@ -63,10 +63,25 @@ export default function RegisterPage() {
   const [vehicleType, setVehicleType] = useState('Motor (Roda 2)');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
+
+  const translateRegisterError = (msg: string) => {
+    if (msg.includes('User already registered') || msg.includes('already registered')) {
+      return 'Email ini sudah terdaftar sebelumnya. Silakan langsung masuk melalui halaman login.';
+    }
+    if (msg.includes('Password should be at least 6 characters')) {
+      return 'Kata sandi minimal harus terdiri dari 6 karakter.';
+    }
+    if (msg.includes('invalid email') || msg.includes('Unable to validate email address')) {
+      return 'Format alamat email tidak valid. Harap periksa kembali email Anda.';
+    }
+    return msg;
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setSuccessNotice(null);
     setLoading(true);
 
     try {
@@ -86,7 +101,7 @@ export default function RegisterPage() {
       });
 
       if (error) {
-        setErrorMsg(error.message);
+        setErrorMsg(translateRegisterError(error.message));
         setLoading(false);
         return;
       }
@@ -101,24 +116,38 @@ export default function RegisterPage() {
           createdAt: new Date().toISOString(),
         });
 
-        addNotification(
-          'success',
-          'Pendaftaran Berhasil',
-          `Selamat bergabung sebagai ${ROLE_OPTIONS.find(r => r.id === role)?.title}. Akun Anda telah aktif.`
-        );
-        if (role === 'SELLER') {
-          window.location.href = '/seller';
-        } else if (role === 'UMKM') {
-          window.location.href = '/craftsman';
-        } else if (role === 'KURIR') {
-          window.location.href = '/courier';
+        // Check if session exists (email confirmation disabled/auto-confirmed)
+        if (data.session) {
+          addNotification(
+            'success',
+            'Pendaftaran Berhasil',
+            `Selamat bergabung sebagai ${ROLE_OPTIONS.find(r => r.id === role)?.title}. Akun Anda telah aktif.`
+          );
+          if (role === 'SELLER') {
+            window.location.href = '/seller';
+          } else if (role === 'UMKM') {
+            window.location.href = '/craftsman';
+          } else if (role === 'KURIR') {
+            window.location.href = '/courier';
+          } else {
+            window.location.href = '/';
+          }
         } else {
-          window.location.href = '/';
+          // If Supabase requires email confirmation
+          setSuccessNotice('Pendaftaran berhasil! Jika akun memerlukan verifikasi, silakan cek kotak masuk/spam email Anda untuk klik tautan konfirmasi, lalu masuk di halaman Login.');
+          addNotification(
+            'success',
+            'Pendaftaran Berhasil Diproses',
+            'Akun Anda berhasil dibuat. Silakan masuk untuk memulai.'
+          );
+          setTimeout(() => {
+            window.location.href = '/auth/login';
+          }, 3500);
         }
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Terjadi kesalahan saat proses registrasi';
-      setErrorMsg(message);
+      setErrorMsg(translateRegisterError(message));
     } finally {
       setLoading(false);
     }
@@ -144,6 +173,13 @@ export default function RegisterPage() {
           <div className="p-3.5 mb-5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-start gap-2.5">
             <AlertCircle size={16} className="shrink-0 text-red-600 mt-0.5" />
             <span className="leading-snug">{errorMsg}</span>
+          </div>
+        )}
+
+        {successNotice && (
+          <div className="p-3.5 mb-5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs rounded-xl flex items-start gap-2.5 font-medium leading-relaxed">
+            <Check size={16} className="shrink-0 text-emerald-600 mt-0.5" />
+            <span>{successNotice}</span>
           </div>
         )}
 

@@ -9,13 +9,16 @@ import { TextileKineticDecor } from '@/components/ui/TextileKineticDecor';
 
 function translateAuthError(message: string): string {
   if (message.includes('Invalid login credentials')) {
-    return 'Email atau kata sandi tidak cocok. Silakan periksa kembali.';
+    return 'Email atau kata sandi tidak cocok. Pastikan akun sudah terdaftar dan kata sandi benar.';
   }
   if (message.includes('Email not confirmed')) {
-    return 'Email belum diverifikasi. Silakan cek inbox atau coba masuk kembali.';
+    return 'Email belum dikonfirmasi. Harap periksa inbox/spam email Anda untuk klik tautan verifikasi, atau nonaktifkan "Confirm email" di dashboard Supabase.';
   }
   if (message.includes('Too many requests')) {
-    return 'Terlalu banyak percobaan masuk. Harap tunggu beberapa saat.';
+    return 'Terlalu banyak percobaan masuk. Harap tunggu beberapa saat sebelum mencoba kembali.';
+  }
+  if (message.includes('User not found') || message.includes('user not found')) {
+    return 'Akun dengan email ini belum terdaftar. Silakan lakukan pendaftaran terlebih dahulu.';
   }
   return message;
 }

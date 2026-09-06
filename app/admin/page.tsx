@@ -105,33 +105,33 @@ export default function AdminPortalPage() {
         ]}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-5 sm:space-y-6">
         {/* TOP ADMIN BANNER - HIGH CONTRAST DARK WITH CRISP LIGHT TEXT */}
-        <div className="bg-gradient-to-r from-stone-900 via-emerald-950 to-stone-900 rounded-3xl p-5 sm:p-6 text-white shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-emerald-900/60">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/20 text-emerald-300 shrink-0">
-              <ShieldAlert className="w-6 h-6" />
+        <div className="bg-gradient-to-r from-stone-900 via-emerald-950 to-stone-900 rounded-3xl p-4 sm:p-6 text-white shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-5 border border-emerald-900/60">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/20 text-emerald-300 shrink-0">
+              <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5">
+                <span className="text-[10px] sm:text-xs font-bold text-amber-300 uppercase tracking-wider">
                   Hak Akses Super Admin
                 </span>
-                <span className="text-xs text-stone-300 font-medium">Pusat Kendali Sirkularitas 2026</span>
+                <span className="text-[10px] sm:text-xs text-stone-300 font-medium hidden sm:inline">&bull; Pusat Kendali Sirkularitas</span>
               </div>
-              <h1 className="text-lg sm:text-xl font-bold font-serif mt-1 text-white">
+              <h1 className="text-base sm:text-xl font-bold font-serif mt-0.5 sm:mt-1 text-white">
                 ClothLoop Central Control
               </h1>
-              <p className="text-stone-300 text-xs mt-0.5 max-w-xl leading-relaxed">
+              <p className="text-stone-300 text-[11px] sm:text-xs mt-0.5 max-w-xl leading-relaxed">
                 Monitoring 4 entitas pengguna: Donatur/Pembeli, Seller Preloved, UMKM Kerajinan Upcycling, dan Mitra Kurir Jemput.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="bg-emerald-500/20 px-4 py-2.5 rounded-2xl border border-emerald-400/30 text-right">
-              <span className="text-xs text-stone-300 font-medium block">Total GMV Ekosistem</span>
-              <span className="text-lg font-black text-emerald-200">
+          <div className="flex items-center gap-3 w-full sm:w-auto shrink-0 justify-end">
+            <div className="bg-emerald-500/20 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl border border-emerald-400/30 text-left sm:text-right w-full sm:w-auto">
+              <span className="text-[10px] sm:text-xs text-stone-300 font-medium block">Total GMV Ekosistem</span>
+              <span className="text-base sm:text-lg font-black text-emerald-200 font-mono">
                 {formatRupiah(stats.finance.totalGMV)}
               </span>
             </div>
