@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/lib/store';
 import { formatNumber } from '@/lib/utils';
-import { ShoppingBag, Recycle, Menu, X, User as UserIcon, LogOut, Scissors, Store, Truck } from 'lucide-react';
+import { ShoppingBag, User as UserIcon, LogOut, Scissors, Store, Truck } from 'lucide-react';
 import { UserRole } from '@/lib/types';
 
 const navLinks = [
@@ -28,7 +28,6 @@ export function Navbar() {
   const pathname = usePathname();
   const { cart, setIsCartOpen, currentUser, userProfile, userPoints, signOut } = useApp();
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   const totalItems = cart.reduce((a, c) => a + c.quantity, 0);
@@ -86,22 +85,24 @@ export function Navbar() {
             })}
           </nav>
 
-          {/* Right Section: Auth, Points, Cart & Mobile Menu Toggle */}
+          {/* Right Section: Auth, Points & Cart */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
 
-            {/* User ClothPoints Badge (Always Visible, 0 Pts when not logged in) */}
-            <Link
-              href="/impact"
-              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 border border-amber-300/90 rounded-full text-amber-800 transition-all no-underline shadow-2xs group"
-              title={currentUser ? "ClothPoints Anda" : "ClothPoints (0 Pts - Masuk untuk melihat saldo)"}
-            >
-              <span className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[9px] sm:text-[10px] font-black group-hover:scale-110 transition-transform shadow-2xs font-mono">
-                P
-              </span>
-              <span className="text-[11px] sm:text-xs font-black font-mono tracking-tight text-amber-900 flex items-center gap-0.5">
-                {formatNumber(currentUser ? userPoints : 0)} <span className="text-[9px] sm:text-[10px] font-bold text-amber-700">Pts</span>
-              </span>
-            </Link>
+            {/* User ClothPoints Badge (Only Visible when Logged In) */}
+            {currentUser && (
+              <Link
+                href="/impact"
+                className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 border border-amber-300/90 rounded-full text-amber-800 transition-all no-underline shadow-2xs group"
+                title="ClothPoints Anda"
+              >
+                <span className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[9px] sm:text-[10px] font-black group-hover:scale-110 transition-transform shadow-2xs font-mono">
+                  P
+                </span>
+                <span className="text-[11px] sm:text-xs font-black font-mono tracking-tight text-amber-900 flex items-center gap-0.5">
+                  {formatNumber(userPoints)} <span className="text-[9px] sm:text-[10px] font-bold text-amber-700">Pts</span>
+                </span>
+              </Link>
+            )}
 
             {/* Cart Trigger with Bounce Badge */}
             <motion.button
@@ -265,66 +266,10 @@ export function Navbar() {
               </div>
             )}
 
-            {/* Mobile Hamburger Menu Toggle */}
-            <button
-              type="button"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden p-2 rounded-xl text-stone-700 hover:text-stone-950 hover:bg-stone-100 transition-colors border border-stone-200"
-              aria-label="Toggle menu"
-            >
-              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-            </button>
-
           </div>
 
         </div>
 
-        {/* Mobile Navigation Drawer */}
-        <AnimatePresence>
-          {mobileOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t border-stone-200 py-3 space-y-1 overflow-hidden"
-            >
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={`block px-3 py-2 rounded-xl text-xs font-bold transition-colors no-underline ${
-                      isActive 
-                        ? 'bg-emerald-800 text-white font-black' 
-                        : 'text-stone-800 hover:bg-stone-100'
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
-
-              <div className="pt-2 border-t border-stone-100 grid grid-cols-2 gap-2">
-                <Link
-                  href="/partner/drop-box"
-                  onClick={() => setMobileOpen(false)}
-                  className="p-2 rounded-xl bg-stone-50 border border-stone-200 text-[11px] font-bold text-stone-700 no-underline text-center"
-                >
-                  Mitra Drop-Box
-                </Link>
-                <Link
-                  href="/partner/artisan"
-                  onClick={() => setMobileOpen(false)}
-                  className="p-2 rounded-xl bg-stone-50 border border-stone-200 text-[11px] font-bold text-stone-700 no-underline text-center"
-                >
-                  Mitra Perajin
-                </Link>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </header>
   );
