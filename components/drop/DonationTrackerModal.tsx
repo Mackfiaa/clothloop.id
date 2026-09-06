@@ -26,7 +26,7 @@ interface DonationTrackerModalProps {
   onClose: () => void;
 }
 
-const STAGES: {
+const PICKUP_STAGES: {
   key: DropOrderStatus;
   stepNum: number;
   title: string;
@@ -36,36 +36,73 @@ const STAGES: {
   {
     key: 'PENDING',
     stepNum: 1,
-    title: 'Tiket Booking Dibuat',
-    desc: 'Kode booking terdaftar di sistem. Menunggu penjemputan kurir atau serah terima di titik kumpul.',
+    title: 'Tiket Penjemputan Terdaftar',
+    desc: 'Kode booking terdaftar di sistem. Menunggu penugasan kurir jemput.',
     icon: QrCode,
   },
   {
     key: 'COURIER_PICKUP',
     stepNum: 2,
-    title: 'Kurir Ditugaskan & Menuju Lokasi',
-    desc: 'Kurir rekanan sedang dalam perjalanan untuk mengambil donasi pakaian sesuai jadwal.',
+    title: 'Kurir Menuju Lokasi Donatur',
+    desc: 'Kurir rekanan dalam perjalanan mengambil donasi pakaian ke alamat Anda.',
     icon: Truck,
   },
   {
     key: 'RECEIVED',
     stepNum: 3,
-    title: 'Discan & Diterima Kurir (Poin Cair)',
-    desc: 'QR Code berhasil diverifikasi. Reward ClothPoints resmi masuk dan aktif di saldo akun donatur.',
+    title: 'Pakaian Discan & Diterima Kurir (Poin Cair)',
+    desc: 'QR Code berhasil discan saat serah terima. Reward ClothPoints resmi masuk ke saldo akun.',
     icon: CheckCircle2,
   },
   {
     key: 'SORTING',
     stepNum: 4,
     title: 'Kurasi & Sortir Serat Tekstil',
-    desc: 'Pakaian diperiksa kebersihan dan dipilah berdasarkan jenis serat: katun, denim, linen, dan perca.',
+    desc: 'Pakaian diperiksa kebersihan dan dipilah berdasarkan jenis serat kain di fasilitas pusat.',
     icon: Recycle,
   },
   {
     key: 'DELIVERED_TO_ARTISAN',
     stepNum: 5,
     title: 'Tiba di Studio Rekonstruksi Perajin UMKM',
-    desc: 'Tekstil telah disalurkan ke mitra perajin lokal binaan ClothLoop untuk diolah menjadi produk kerajinan siap pakai.',
+    desc: 'Tekstil telah disalurkan ke mitra perajin lokal untuk diolah menjadi produk kerajinan siap pakai.',
+    icon: Scissors,
+  },
+];
+
+const DROPOFF_STAGES: {
+  key: DropOrderStatus;
+  stepNum: number;
+  title: string;
+  desc: string;
+  icon: React.ElementType;
+}[] = [
+  {
+    key: 'PENDING',
+    stepNum: 1,
+    title: 'Tiket Drop-Off Mandiri Aktif',
+    desc: 'Silakan bawa pakaian donasi Anda ke lokasi titik kumpul drop-box yang telah Anda pilih.',
+    icon: MapPin,
+  },
+  {
+    key: 'RECEIVED',
+    stepNum: 2,
+    title: 'Discan & Diterima Petugas Lokasi (Poin Cair)',
+    desc: 'Petugas / smart drop-box memindai QR Code tiket Anda saat serah terima pakaian. Poin langsung cair ke akun.',
+    icon: CheckCircle2,
+  },
+  {
+    key: 'SORTING',
+    stepNum: 3,
+    title: 'Kurasi & Sortir Serat Tekstil',
+    desc: 'Pakaian dari titik kumpul dipilah berdasarkan kondisi kain dan jenis serat untuk rekonstruksi.',
+    icon: Recycle,
+  },
+  {
+    key: 'DELIVERED_TO_ARTISAN',
+    stepNum: 4,
+    title: 'Penyaluran ke Studio Perajin UMKM',
+    desc: 'Bahan kain disalurkan ke perajin lokal untuk diolah kembali menjadi produk kerajinan bernilai tinggi.',
     icon: Scissors,
   },
 ];
@@ -75,15 +112,29 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
 
   if (!order) return null;
 
+  const isDropoff = order.method === 'DROPOFF';
+  const stages = isDropoff ? DROPOFF_STAGES : PICKUP_STAGES;
+
   const currentStageIndex = () => {
-    switch (order.status) {
-      case 'PENDING': return 0;
-      case 'COURIER_PICKUP': return 1;
-      case 'RECEIVED': return 2;
-      case 'SORTING': return 3;
-      case 'DELIVERED_TO_ARTISAN':
-      case 'COMPLETED': return 4;
-      default: return 0;
+    if (isDropoff) {
+      switch (order.status) {
+        case 'PENDING': return 0;
+        case 'RECEIVED': return 1;
+        case 'SORTING': return 2;
+        case 'DELIVERED_TO_ARTISAN':
+        case 'COMPLETED': return 3;
+        default: return 0;
+      }
+    } else {
+      switch (order.status) {
+        case 'PENDING': return 0;
+        case 'COURIER_PICKUP': return 1;
+        case 'RECEIVED': return 2;
+        case 'SORTING': return 3;
+        case 'DELIVERED_TO_ARTISAN':
+        case 'COMPLETED': return 4;
+        default: return 0;
+      }
     }
   };
 
@@ -94,14 +145,24 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
   };
 
   const handleAdvanceStatus = () => {
-    if (order.status === 'PENDING') {
-      updateOrderStatus(order.bookingCode, 'COURIER_PICKUP');
-    } else if (order.status === 'COURIER_PICKUP') {
-      confirmCourierScan(order.bookingCode);
-    } else if (order.status === 'RECEIVED') {
-      updateOrderStatus(order.bookingCode, 'SORTING');
-    } else if (order.status === 'SORTING') {
-      updateOrderStatus(order.bookingCode, 'DELIVERED_TO_ARTISAN');
+    if (isDropoff) {
+      if (order.status === 'PENDING') {
+        confirmCourierScan(order.bookingCode);
+      } else if (order.status === 'RECEIVED') {
+        updateOrderStatus(order.bookingCode, 'SORTING');
+      } else if (order.status === 'SORTING') {
+        updateOrderStatus(order.bookingCode, 'DELIVERED_TO_ARTISAN');
+      }
+    } else {
+      if (order.status === 'PENDING') {
+        updateOrderStatus(order.bookingCode, 'COURIER_PICKUP');
+      } else if (order.status === 'COURIER_PICKUP') {
+        confirmCourierScan(order.bookingCode);
+      } else if (order.status === 'RECEIVED') {
+        updateOrderStatus(order.bookingCode, 'SORTING');
+      } else if (order.status === 'SORTING') {
+        updateOrderStatus(order.bookingCode, 'DELIVERED_TO_ARTISAN');
+      }
     }
   };
 
@@ -176,9 +237,9 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
           </div>
         </div>
 
-        {/* ── 5 STAGE VERTICAL TIMELINE ── */}
+        {/* ── VERTICAL TIMELINE ── */}
         <div className="flex flex-col gap-0 relative pl-2">
-          {STAGES.map((stg, idx) => {
+          {stages.map((stg, idx) => {
             const Icon = stg.icon;
             const isPassed = idx <= activeIndex;
             const isCurrent = idx === activeIndex;
@@ -186,7 +247,7 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
             return (
               <div key={stg.key} className="flex items-start gap-3.5 relative pb-6 last:pb-0 group">
                 {/* Connecting Line */}
-                {idx < STAGES.length - 1 && (
+                {idx < stages.length - 1 && (
                   <div 
                     className={`absolute left-[17px] top-[34px] bottom-0 w-0.5 ${
                       idx < activeIndex ? 'bg-emerald-600' : 'bg-gray-200'
@@ -249,13 +310,19 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
           })}
         </div>
 
-        {/* Action Buttons & Courier Simulation */}
+        {/* Action Buttons & Simulation */}
         <div className="pt-3 border-t border-gray-100 flex flex-col gap-2.5">
           {!order.pointsCredited ? (
             <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="text-xs text-amber-900">
-                <span className="font-bold block">Simulasi Petugas / Kurir:</span>
-                <span className="text-[11px] text-amber-800">Klik untuk mensimulasikan scan QR code kurir saat serah terima pakaian.</span>
+                <span className="font-bold block">
+                  {isDropoff ? 'Simulasi Petugas Drop Point:' : 'Simulasi Kurir Penjemput:'}
+                </span>
+                <span className="text-[11px] text-amber-800">
+                  {isDropoff 
+                    ? 'Klik untuk mensimulasikan petugas drop-point / smart dropbox memindai QR code saat Anda menyerahkan pakaian.'
+                    : 'Klik untuk mensimulasikan kurir memindai QR code saat serah terima pakaian di rumah Anda.'}
+                </span>
               </div>
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -263,10 +330,10 @@ export function DonationTrackerModal({ order, onClose }: DonationTrackerModalPro
                 onClick={handleSimulateScan}
                 className="btn-primary text-xs py-2 px-4 whitespace-nowrap bg-emerald-700 hover:bg-emerald-800 border-none font-bold cursor-pointer shrink-0 shadow-xs"
               >
-                <QrCode size={13} className="mr-1 inline" /> Scan & Cairkan Poin
+                <QrCode size={13} className="mr-1 inline" /> {isDropoff ? 'Scan Petugas (Cairkan Poin)' : 'Scan Kurir (Cairkan Poin)'}
               </motion.button>
             </div>
-          ) : activeIndex < 4 ? (
+          ) : activeIndex < stages.length - 1 ? (
             <div className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-200">
               <span className="text-xs text-gray-600 font-medium">Lanjutkan simulasi ke tahap berikutnya:</span>
               <button

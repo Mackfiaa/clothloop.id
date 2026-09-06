@@ -881,20 +881,36 @@ export default function DropPage() {
                         </div>
                       ) : (
                         activeOrders.map(order => {
+                          const isDropoff = order.method === 'DROPOFF';
                           const getStatusBadge = (status: DropOrderStatus) => {
-                            switch (status) {
-                              case 'PENDING':
-                                return { label: 'Menunggu Penjemputan / Serah Terima', color: 'bg-amber-100 text-amber-900 border-amber-300' };
-                              case 'COURIER_PICKUP':
-                                return { label: 'Kurir Sedang Menuju Lokasi', color: 'bg-blue-100 text-blue-900 border-blue-300' };
-                              case 'RECEIVED':
-                                return { label: 'Diterima Kurir (Poin Cair)', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' };
-                              case 'SORTING':
-                                return { label: 'Proses Kurasi & Sortir', color: 'bg-purple-100 text-purple-900 border-purple-300' };
-                              case 'DELIVERED_TO_ARTISAN':
-                                return { label: 'Tiba di Studio Perajin', color: 'bg-teal-100 text-teal-900 border-teal-300' };
-                              default:
-                                return { label: status, color: 'bg-gray-100 text-gray-800 border-gray-300' };
+                            if (isDropoff) {
+                              switch (status) {
+                                case 'PENDING':
+                                  return { label: 'Siap Diantar Mandiri ke Drop Point', color: 'bg-amber-100 text-amber-900 border-amber-300' };
+                                case 'RECEIVED':
+                                  return { label: 'Diterima Petugas (Poin Cair)', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' };
+                                case 'SORTING':
+                                  return { label: 'Proses Kurasi & Sortir', color: 'bg-purple-100 text-purple-900 border-purple-300' };
+                                case 'DELIVERED_TO_ARTISAN':
+                                  return { label: 'Penyaluran ke Perajin UMKM', color: 'bg-teal-100 text-teal-900 border-teal-300' };
+                                default:
+                                  return { label: status, color: 'bg-gray-100 text-gray-800 border-gray-300' };
+                              }
+                            } else {
+                              switch (status) {
+                                case 'PENDING':
+                                  return { label: 'Menunggu Penjemputan Kurir', color: 'bg-amber-100 text-amber-900 border-amber-300' };
+                                case 'COURIER_PICKUP':
+                                  return { label: 'Kurir Sedang Menuju Lokasi', color: 'bg-blue-100 text-blue-900 border-blue-300' };
+                                case 'RECEIVED':
+                                  return { label: 'Diterima Kurir (Poin Cair)', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' };
+                                case 'SORTING':
+                                  return { label: 'Proses Kurasi & Sortir', color: 'bg-purple-100 text-purple-900 border-purple-300' };
+                                case 'DELIVERED_TO_ARTISAN':
+                                  return { label: 'Tiba di Studio Perajin', color: 'bg-teal-100 text-teal-900 border-teal-300' };
+                                default:
+                                  return { label: status, color: 'bg-gray-100 text-gray-800 border-gray-300' };
+                              }
                             }
                           };
                           const statusInfo = getStatusBadge(order.status);
@@ -912,7 +928,7 @@ export default function DropPage() {
                                     </span>
                                   </div>
                                   <span className="text-xs font-bold text-[var(--ink-primary)] block">
-                                    {order.itemCount} Helai Pakaian ({order.method === 'PICKUP' ? order.courierService : order.dropPointName})
+                                    {order.itemCount} Helai Pakaian ({order.method === 'PICKUP' ? (order.courierService || 'Kurir Jemput') : (order.dropPointName || 'Drop Point')})
                                   </span>
                                   <span className="text-[11px] text-[var(--ink-secondary)]">
                                     Jadwal: {order.scheduledDate || 'Hari Ini'} ({order.scheduledSlot?.split(' ')[0] || '09.00-12.00'})
@@ -936,7 +952,7 @@ export default function DropPage() {
                                   onClick={() => setActiveOrder(order)}
                                   className="btn-primary text-[11px] py-2 px-2.5 font-bold flex items-center justify-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl shadow-xs cursor-pointer border-none text-center"
                                 >
-                                  <QrCode size={12} /> Buka QR Kurir
+                                  <QrCode size={12} /> {order.method === 'DROPOFF' ? 'Buka QR Tiket' : 'Buka QR Kurir'}
                                 </button>
                                 <button
                                   type="button"
@@ -1079,7 +1095,9 @@ export default function DropPage() {
               {/* Receipt Header */}
               <div className="text-center pb-3 border-b border-dashed border-gray-300">
                 <span className="text-lg font-extrabold tracking-tight block text-emerald-900">CLOTHLOOP.ID</span>
-                <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">BUKTI BOOKING PENYERAHAN PAKAIAN</span>
+                <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                  {activeOrder.method === 'DROPOFF' ? 'TIKET RESMI DROP-OFF MANDIRI' : 'BUKTI BOOKING PENJEMPUTAN KURIR'}
+                </span>
               </div>
 
               {/* QR Code Graphic */}
@@ -1118,8 +1136,10 @@ export default function DropPage() {
                 <span className="font-mono text-sm font-extrabold text-emerald-900 mt-2">
                   {activeOrder.bookingCode}
                 </span>
-                <span className="text-[10px] text-gray-500 font-medium">
-                  Tunjukkan kode ini kepada kurir / petugas saat serah terima
+                <span className="text-[10px] text-gray-500 font-medium text-center px-4">
+                  {activeOrder.method === 'DROPOFF'
+                    ? `Tunjukkan QR / Kode ini kepada petugas di ${activeOrder.dropPointName || 'titik kumpul'} saat Anda mengantar pakaian`
+                    : 'Tunjukkan QR / Kode ini kepada kurir penjemput saat kurir tiba di rumah Anda'}
                 </span>
               </div>
 
@@ -1133,6 +1153,18 @@ export default function DropPage() {
                   <span className="text-gray-500">Metode:</span>
                   <span className="font-bold text-emerald-800">{activeOrder.method === 'DROPOFF' ? 'Drop-off Mandiri' : 'Pick-up Kurir'}</span>
                 </div>
+                {activeOrder.method === 'DROPOFF' && activeOrder.dropPointName && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Lokasi Titik Kumpul:</span>
+                    <strong className="text-emerald-900 text-right max-w-[200px] truncate">{activeOrder.dropPointName}</strong>
+                  </div>
+                )}
+                {activeOrder.method === 'PICKUP' && activeOrder.userAddress && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Alamat Jemput:</span>
+                    <strong className="text-stone-800 text-right max-w-[200px] truncate">{activeOrder.userAddress}</strong>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-500">Jadwal:</span>
                   <span className="font-bold">{activeOrder.scheduledDate} ({activeOrder.scheduledSlot?.split(' ')[0]})</span>
@@ -1148,16 +1180,20 @@ export default function DropPage() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">Status Poin:</span>
                   <span className={`font-bold ${activeOrder.pointsCredited ? 'text-emerald-600' : 'text-amber-600'}`}>
-                    {activeOrder.pointsCredited ? 'Telah Masuk ke Saldo' : 'Menunggu Scan Kurir'}
+                    {activeOrder.pointsCredited 
+                      ? 'Telah Masuk ke Saldo' 
+                      : (activeOrder.method === 'DROPOFF' ? 'Menunggu Scan Petugas Drop Point' : 'Menunggu Scan Kurir')}
                   </span>
                 </div>
               </div>
 
-              {/* Courier Simulation Scan Button */}
+              {/* Simulation Scan Button */}
               {!activeOrder.pointsCredited && (
                 <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-center flex flex-col gap-2">
                   <span className="text-[11px] text-amber-900 font-medium">
-                    🔍 Uji Coba: Simulasikan kurir memindai QR code ini sekarang:
+                    {activeOrder.method === 'DROPOFF'
+                      ? '🔍 Uji Coba: Simulasikan petugas drop-point / smart dropbox memindai QR tiket ini:'
+                      : '🔍 Uji Coba: Simulasikan kurir memindai QR code ini sekarang:'}
                   </span>
                   <button
                     onClick={() => {
@@ -1166,7 +1202,7 @@ export default function DropPage() {
                     }}
                     className="btn-primary text-xs py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold border-none cursor-pointer rounded-lg shadow-xs"
                   >
-                    <QrCode size={13} className="inline mr-1" /> Simulasi Scan Kurir (Cairkan Poin)
+                    <QrCode size={13} className="inline mr-1" /> {activeOrder.method === 'DROPOFF' ? 'Simulasi Scan Petugas (Cairkan Poin)' : 'Simulasi Scan Kurir (Cairkan Poin)'}
                   </button>
                 </div>
               )}
