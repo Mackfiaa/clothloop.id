@@ -182,6 +182,7 @@ export function CheckoutModal({ isOpen, onClose, items, onSuccessOrder }: Checko
       const newOrder: CraftOrder = {
         id: `co-${Date.now()}`,
         orderNumber: randomOrderNum,
+        userId: currentUser?.id || 'usr-guest',
         trackingNumber: randomTrackingNum,
         courierName: 'J&T Express EZ',
         items: items,

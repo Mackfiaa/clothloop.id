@@ -4312,7 +4312,17 @@ export async function fetchCraftProducts(): Promise<CraftProduct[]> {
 
 // ── Drop Orders (Riwayat Donasi Pakaian) Database Sync ──
 export async function fetchDropOrdersFromSupabase(userId?: string): Promise<DropOrder[]> {
-  if (!userId) return [];
+  if (!userId) {
+    if (typeof window === 'undefined') return [];
+    try {
+      const localGuest = localStorage.getItem('clothloop_drop_orders');
+      return localGuest ? JSON.parse(localGuest) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  let dbOrders: DropOrder[] = [];
   try {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -4321,44 +4331,103 @@ export async function fetchDropOrdersFromSupabase(userId?: string): Promise<Drop
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error || !data || data.length === 0) return [];
-
-    return data.map((d: any) => ({
-      id: d.id,
-      bookingCode: d.booking_code,
-      userId: d.user_id || 'usr-guest',
-      userName: d.user_name,
-      userPhone: d.user_phone,
-      userAddress: d.user_address,
-      method: d.method as any,
-      dropPointId: d.drop_point_id,
-      dropPointName: d.drop_point_name,
-      courierService: d.courier_service,
-      scheduledDate: d.scheduled_date || '2026-09-06',
-      scheduledSlot: d.scheduled_slot || '09.00 - 12.00 (Pagi)',
-      itemCount: Number(d.item_count) || 1,
-      garmentTypes: d.garment_types || [],
-      status: d.status as any,
-      pointsAwarded: Number(d.points_awarded) || 300,
-      pointsCredited: d.status === 'RECEIVED' || d.status === 'COMPLETED',
-      waterSavedLiters: Number(d.water_saved_liters) || 2700,
-      co2SavedKg: Number(d.co2_saved_kg) || 3.6,
-      createdAt: d.created_at,
-      qrCodeValue: d.qr_code_value || `CLD-VERIFY:${d.booking_code}:${d.points_awarded}PTS`,
-      notes: d.notes,
-    }));
+    if (!error && data && data.length > 0) {
+      dbOrders = data.map((d: any) => ({
+        id: d.id,
+        bookingCode: d.booking_code,
+        userId: d.user_id || userId,
+        userName: d.user_name,
+        userPhone: d.user_phone,
+        userAddress: d.user_address,
+        method: d.method as any,
+        dropPointId: d.drop_point_id,
+        dropPointName: d.drop_point_name,
+        courierService: d.courier_service,
+        scheduledDate: d.scheduled_date || '2026-09-06',
+        scheduledSlot: d.scheduled_slot || '09.00 - 12.00 (Pagi)',
+        itemCount: Number(d.item_count) || 1,
+        garmentTypes: d.garment_types || [],
+        status: d.status as any,
+        pointsAwarded: Number(d.points_awarded) || 300,
+        pointsCredited: d.status === 'RECEIVED' || d.status === 'COMPLETED',
+        waterSavedLiters: Number(d.water_saved_liters) || 2700,
+        co2SavedKg: Number(d.co2_saved_kg) || 3.6,
+        createdAt: d.created_at,
+        qrCodeValue: d.qr_code_value || `CLD-VERIFY:${d.booking_code}:${d.points_awarded}PTS`,
+        notes: d.notes,
+      }));
+    }
   } catch {
-    return [];
+    // ignore
   }
+
+  // Check user-scoped local storage
+  let localOrders: DropOrder[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      const scopedRaw = localStorage.getItem(`clothloop_drop_orders_${userId}`);
+      if (scopedRaw) {
+        localOrders = JSON.parse(scopedRaw);
+      } else {
+        const generalRaw = localStorage.getItem('clothloop_drop_orders');
+        if (generalRaw) {
+          const generalOrders: DropOrder[] = JSON.parse(generalRaw);
+          localOrders = generalOrders.filter(o => o.userId === userId || !o.userId);
+        }
+      }
+    } catch {}
+  }
+
+  // Merge dbOrders and localOrders (deduplicating by bookingCode or id)
+  const map = new Map<string, DropOrder>();
+  [...dbOrders, ...localOrders].forEach((order) => {
+    const key = (order.bookingCode || order.id).toLowerCase();
+    if (!map.has(key)) {
+      map.set(key, order);
+    } else {
+      // Prioritize the one with updated status or scanned status
+      const existing = map.get(key)!;
+      if (order.status === 'RECEIVED' || order.pointsCredited) {
+        map.set(key, order);
+      }
+    }
+  });
+
+  const merged = Array.from(map.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`clothloop_drop_orders_${userId}`, JSON.stringify(merged));
+      localStorage.setItem('clothloop_drop_orders', JSON.stringify(merged));
+    } catch {}
+  }
+
+  return merged;
 }
 
 export async function saveDropOrderToSupabase(order: DropOrder): Promise<void> {
+  const userId = order.userId || 'usr-guest';
+
+  // Save to user-scoped local storage immediately
+  if (typeof window !== 'undefined') {
+    try {
+      const scopedKey = `clothloop_drop_orders_${userId}`;
+      const existingRaw = localStorage.getItem(scopedKey);
+      const existing: DropOrder[] = existingRaw ? JSON.parse(existingRaw) : [];
+      const updated = [order, ...existing.filter(o => o.bookingCode !== order.bookingCode && o.id !== order.id)];
+      localStorage.setItem(scopedKey, JSON.stringify(updated));
+      localStorage.setItem('clothloop_drop_orders', JSON.stringify(updated));
+    } catch {}
+  }
+
   try {
     const supabase = createClient();
     await supabase.from('drop_orders').upsert({
       id: order.id,
       booking_code: order.bookingCode,
-      user_id: order.userId,
+      user_id: userId,
       user_name: order.userName,
       user_phone: order.userPhone,
       user_address: order.userAddress || `${order.userCity || ''} ${order.userDistrict || ''}`,
@@ -4383,7 +4452,17 @@ export async function saveDropOrderToSupabase(order: DropOrder): Promise<void> {
 
 // ── Marketplace & Craft Orders (Riwayat Pembelian & Pelacakan) Database Sync ──
 export async function fetchMarketplaceOrdersFromSupabase(userId?: string): Promise<CraftOrder[]> {
-  if (!userId) return [];
+  if (!userId) {
+    if (typeof window === 'undefined') return [];
+    try {
+      const localGuest = localStorage.getItem('clothloop_craft_orders');
+      return localGuest ? JSON.parse(localGuest) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  let dbOrders: CraftOrder[] = [];
   try {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -4392,41 +4471,101 @@ export async function fetchMarketplaceOrdersFromSupabase(userId?: string): Promi
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error || !data || data.length === 0) return [];
-
-    return data.map((d: any) => ({
-      id: d.id,
-      orderNumber: d.order_number,
-      trackingNumber: d.tracking_number,
-      courierName: d.courier_name || 'J&T Express EZ',
-      items: typeof d.items === 'string' ? JSON.parse(d.items) : d.items,
-      receiverName: d.receiver_name,
-      receiverPhone: d.receiver_phone,
-      destinationCity: d.destination_city,
-      fullAddress: d.full_address,
-      subtotal: Number(d.subtotal),
-      shippingCost: Number(d.shipping_cost),
-      pointsDiscount: Number(d.points_discount) || 0,
-      pointsUsed: Number(d.points_used) || 0,
-      totalAmount: Number(d.total_amount),
-      paymentMethod: d.payment_method,
-      paymentCategory: d.payment_category as any,
-      status: d.status as any,
-      escrowStatus: d.escrow_status as any,
-      createdAt: d.created_at,
-      estimatedDeliveryDate: d.estimated_delivery_date || '2026-09-08',
-    }));
+    if (!error && data && data.length > 0) {
+      dbOrders = data.map((d: any) => ({
+        id: d.id,
+        orderNumber: d.order_number,
+        userId: d.user_id || userId,
+        trackingNumber: d.tracking_number,
+        courierName: d.courier_name || 'J&T Express EZ',
+        items: typeof d.items === 'string' ? JSON.parse(d.items) : d.items,
+        receiverName: d.receiver_name,
+        receiverPhone: d.receiver_phone,
+        destinationCity: d.destination_city,
+        fullAddress: d.full_address,
+        subtotal: Number(d.subtotal),
+        shippingCost: Number(d.shipping_cost),
+        pointsDiscount: Number(d.points_discount) || 0,
+        pointsUsed: Number(d.points_used) || 0,
+        totalAmount: Number(d.total_amount),
+        paymentMethod: d.payment_method,
+        paymentCategory: d.payment_category as any,
+        status: d.status as any,
+        escrowStatus: d.escrow_status as any,
+        createdAt: d.created_at,
+        estimatedDeliveryDate: d.estimated_delivery_date || '2026-09-08',
+      }));
+    }
   } catch {
-    return [];
+    // ignore
   }
+
+  // Check user-scoped local storage
+  let localOrders: CraftOrder[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      const scopedRaw = localStorage.getItem(`clothloop_craft_orders_${userId}`);
+      if (scopedRaw) {
+        localOrders = JSON.parse(scopedRaw);
+      } else {
+        const generalRaw = localStorage.getItem('clothloop_craft_orders');
+        if (generalRaw) {
+          const generalOrders: CraftOrder[] = JSON.parse(generalRaw);
+          localOrders = generalOrders.filter(o => o.userId === userId || !o.userId);
+        }
+      }
+    } catch {}
+  }
+
+  // Merge dbOrders and localOrders (deduplicating by orderNumber or id)
+  const map = new Map<string, CraftOrder>();
+  [...dbOrders, ...localOrders].forEach((order) => {
+    const key = (order.orderNumber || order.id).toLowerCase();
+    if (!map.has(key)) {
+      map.set(key, order);
+    } else {
+      const existing = map.get(key)!;
+      if (order.status === 'COMPLETED' || order.status === 'DELIVERED') {
+        map.set(key, order);
+      }
+    }
+  });
+
+  const merged = Array.from(map.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`clothloop_craft_orders_${userId}`, JSON.stringify(merged));
+      localStorage.setItem('clothloop_craft_orders', JSON.stringify(merged));
+    } catch {}
+  }
+
+  return merged;
 }
 
 export async function saveMarketplaceOrderToSupabase(order: CraftOrder): Promise<void> {
+  const userId = order.userId || 'usr-guest';
+
+  // Save to user-scoped local storage immediately
+  if (typeof window !== 'undefined') {
+    try {
+      const scopedKey = `clothloop_craft_orders_${userId}`;
+      const existingRaw = localStorage.getItem(scopedKey);
+      const existing: CraftOrder[] = existingRaw ? JSON.parse(existingRaw) : [];
+      const updated = [order, ...existing.filter(o => o.orderNumber !== order.orderNumber && o.id !== order.id)];
+      localStorage.setItem(scopedKey, JSON.stringify(updated));
+      localStorage.setItem('clothloop_craft_orders', JSON.stringify(updated));
+    } catch {}
+  }
+
   try {
     const supabase = createClient();
     await supabase.from('marketplace_orders').upsert({
       id: order.id,
       order_number: order.orderNumber,
+      user_id: userId,
       tracking_number: order.trackingNumber,
       courier_name: order.courierName,
       items: order.items,

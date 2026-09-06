@@ -94,6 +94,7 @@ export default function RegisterPage() {
             full_name: fullName.trim(),
             phone: phone.trim(),
             role: role,
+            cloth_points: 0,
             business_name: (role === 'SELLER' || role === 'UMKM') ? businessName.trim() : null,
             vehicle_type: (role === 'KURIR') ? vehicleType : null,
           },

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { DropOrder, DropOrderStatus, CartItem, UpcycleRequest, RewardVoucher, MarketItem, UserRole, CraftOrder, CraftOrderStatus } from './types';
 import { createClient } from './supabase/client';
-import { fetchDropOrdersFromSupabase, fetchMarketplaceOrdersFromSupabase, saveMarketplaceOrderToSupabase, updateMarketplaceOrderStatusInSupabase } from './supabase/data';
+import { fetchDropOrdersFromSupabase, saveDropOrderToSupabase, fetchMarketplaceOrdersFromSupabase, saveMarketplaceOrderToSupabase, updateMarketplaceOrderStatusInSupabase } from './supabase/data';
 import { addCourierPickupTask } from './supabase/portalData';
 import { User } from '@supabase/supabase-js';
 
@@ -108,11 +108,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (data && !error) {
         setUserProfile(data as UserProfile);
-        setUserPoints(data.cloth_points ?? 0);
+        const points = typeof data.cloth_points === 'number' ? data.cloth_points : 0;
+        setUserPoints(points);
         setUserTotalWaterSaved(Number(data.total_water_saved_liters) || 0);
         setUserTotalCo2Saved(Number(data.total_co2_saved_kg) || 0);
         setUserTotalKgDiverted(Number(data.total_kg_diverted) || 0);
         
+        try {
+          localStorage.setItem(`clothloop_points_${user.id}`, String(points));
+        } catch {}
+
         try {
           const { recordNewRegisteredUser } = await import('@/lib/supabase/portalData');
           recordNewRegisteredUser({
@@ -124,9 +129,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             city: data.city,
           });
         } catch {}
+      } else {
+        // Local fallback if offline or profile row initializing
+        let fallbackPoints = 0;
+        try {
+          const savedPts = localStorage.getItem(`clothloop_points_${user.id}`);
+          if (savedPts !== null) fallbackPoints = Number(savedPts) || 0;
+        } catch {}
+        setUserPoints(fallbackPoints);
       }
     } catch {
-      // fallback to defaults
+      // fallback to 0
+      setUserPoints(0);
     }
   }, []);
 
@@ -207,16 +221,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
+      // Reset in-memory session state only, never purge persistent history
       setCurrentUser(null);
       setUserProfile(null);
       setDropOrders([]);
       setCraftOrders([]);
       setUserPoints(0);
-      try {
-        localStorage.removeItem('clothloop_drop_orders');
-        localStorage.removeItem('clothloop_craft_orders');
-        localStorage.removeItem('clothloop_points');
-      } catch {}
       addNotification('info', 'Sampai Jumpa', 'Kamu telah keluar dari akun.');
     } catch {
       // ignore
@@ -257,57 +267,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addDropOrder = async (order: DropOrder) => {
-    // Ensure points are not credited yet
+    const userId = currentUser?.id || order.userId || 'usr-guest';
     const orderWithState: DropOrder = {
       ...order,
+      userId,
       pointsCredited: false,
-      status: order.method === 'PICKUP' ? 'PENDING' : 'PENDING',
+      status: 'PENDING',
     };
 
-    setDropOrders((prev) => {
-      const updated = [orderWithState, ...prev];
-      try {
-        localStorage.setItem('clothloop_drop_orders', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
+    setDropOrders((prev) => [orderWithState, ...prev]);
+
+    // Save using data sync helper (saves to scoped localStorage & Supabase)
+    await saveDropOrderToSupabase(orderWithState);
 
     // Auto-dispatch task to couriers in the same city if method is PICKUP
     if (orderWithState.method === 'PICKUP') {
       try {
         addCourierPickupTask(orderWithState);
       } catch {}
-    }
-
-    // If user logged in, persist to Supabase
-    if (currentUser) {
-      try {
-        const supabase = createClient();
-        await supabase.from('drop_orders').insert({
-          id: orderWithState.id,
-          booking_code: orderWithState.bookingCode,
-          user_id: currentUser.id,
-          user_name: orderWithState.userName,
-          user_phone: orderWithState.userPhone,
-          user_address: orderWithState.userAddress,
-          method: orderWithState.method,
-          drop_point_id: orderWithState.dropPointId,
-          drop_point_name: orderWithState.dropPointName,
-          courier_service: orderWithState.courierService,
-          estimated_weight_kg: orderWithState.estimatedWeightKg,
-          actual_weight_kg: orderWithState.actualWeightKg,
-          item_count: orderWithState.itemCount,
-          garment_types: orderWithState.garmentTypes,
-          status: orderWithState.status,
-          points_awarded: orderWithState.pointsAwarded,
-          water_saved_liters: orderWithState.waterSavedLiters,
-          co2_saved_kg: orderWithState.co2SavedKg,
-          qr_code_value: orderWithState.qrCodeValue,
-          notes: orderWithState.notes,
-        });
-      } catch {
-        // ignore
-      }
     }
 
     addNotification(
@@ -360,7 +337,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUserTotalWaterSaved(newWater);
     setUserTotalCo2Saved(newCo2);
 
-    if (currentUser) {
+    const userId = currentUser?.id || targetOrder.userId;
+    if (userId) {
+      try {
+        localStorage.setItem(`clothloop_points_${userId}`, String(newPoints));
+        localStorage.setItem(`clothloop_drop_orders_${userId}`, JSON.stringify(updatedOrders));
+        localStorage.setItem('clothloop_drop_orders', JSON.stringify(updatedOrders));
+      } catch {}
+
       try {
         const supabase = createClient();
         supabase.from('profiles').update({
@@ -368,11 +352,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           total_kg_diverted: newKg,
           total_water_saved_liters: newWater,
           total_co2_saved_kg: newCo2,
-        }).eq('id', currentUser.id);
+        }).eq('id', userId).then(() => {});
 
         supabase.from('drop_orders').update({
           status: 'RECEIVED',
-        }).eq('booking_code', bookingCode);
+        }).eq('booking_code', bookingCode).then(() => {});
       } catch {
         // ignore
       }
@@ -388,13 +372,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateOrderStatus = (bookingCode: string, status: DropOrderStatus) => {
-    setDropOrders((prev) =>
-      prev.map((o) =>
+    setDropOrders((prev) => {
+      const updated = prev.map((o) =>
         o.bookingCode.toLowerCase() === bookingCode.toLowerCase()
           ? { ...o, status }
           : o
-      )
-    );
+      );
+      if (currentUser) {
+        try {
+          localStorage.setItem(`clothloop_drop_orders_${currentUser.id}`, JSON.stringify(updated));
+          localStorage.setItem('clothloop_drop_orders', JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
   };
 
   const addUpcycleRequest = (req: UpcycleRequest) => {
@@ -416,8 +407,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    setUserPoints((prev) => prev - voucher.pointsCost);
+    const newPoints = userPoints - voucher.pointsCost;
+    setUserPoints(newPoints);
     setRedeemedVouchers((prev) => [voucher, ...prev]);
+
+    if (currentUser) {
+      try {
+        localStorage.setItem(`clothloop_points_${currentUser.id}`, String(newPoints));
+        const supabase = createClient();
+        supabase.from('profiles').update({ cloth_points: newPoints }).eq('id', currentUser.id).then(() => {});
+      } catch {}
+    }
+
     addNotification(
       'success',
       'Voucher Berhasil Diklaim',
@@ -426,12 +427,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  const addCraftOrder = (order: CraftOrder) => {
-    setCraftOrders((prev) => [order, ...prev]);
-    try {
-      localStorage.setItem('clothloop_craft_orders', JSON.stringify([order, ...craftOrders]));
-    } catch {}
-    saveMarketplaceOrderToSupabase(order);
+  const addCraftOrder = async (order: CraftOrder) => {
+    const userId = currentUser?.id || order.userId || 'usr-guest';
+    const completeOrder: CraftOrder = {
+      ...order,
+      userId,
+    };
+
+    setCraftOrders((prev) => [completeOrder, ...prev]);
+    await saveMarketplaceOrderToSupabase(completeOrder);
+
     addNotification(
       'success',
       'Pesanan Berhasil Dicatat',
@@ -452,9 +457,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
         return o;
       });
-      try {
-        localStorage.setItem('clothloop_craft_orders', JSON.stringify(updated));
-      } catch {}
+      if (currentUser) {
+        try {
+          localStorage.setItem(`clothloop_craft_orders_${currentUser.id}`, JSON.stringify(updated));
+          localStorage.setItem('clothloop_craft_orders', JSON.stringify(updated));
+        } catch {}
+      }
       return updated;
     });
 
@@ -470,7 +478,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deductUserPoints = (amount: number) => {
-    setUserPoints((prev) => Math.max(0, prev - amount));
+    setUserPoints((prev) => {
+      const nextPts = Math.max(0, prev - amount);
+      if (currentUser) {
+        try {
+          localStorage.setItem(`clothloop_points_${currentUser.id}`, String(nextPts));
+          const supabase = createClient();
+          supabase.from('profiles').update({ cloth_points: nextPts }).eq('id', currentUser.id).then(() => {});
+        } catch {}
+      }
+      return nextPts;
+    });
   };
 
   return (

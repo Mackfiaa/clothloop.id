@@ -208,6 +208,7 @@ export interface CraftOrderItem {
 export interface CraftOrder {
   id: string;
   orderNumber: string;
+  userId?: string;
   trackingNumber: string;
   courierName: string;
   items: CraftOrderItem[];
