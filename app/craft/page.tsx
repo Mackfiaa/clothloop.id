@@ -520,24 +520,32 @@ export default function CraftMarketplacePage() {
       </div>
 
       {/* ── 4. SECTION PALING BAWAH (BACKGROUND HIJAU): AJAKAN DONASI PAKAIAN ─────────── */}
-      <div className="container-site my-6">
-        <div className="rounded-3xl bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 p-8 sm:p-10 text-white shadow-xl flex flex-col items-center text-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-emerald-800/80 border border-emerald-400/30 flex items-center justify-center text-amber-300">
-            <Scissors size={28} />
-          </div>
+      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 text-white py-14 sm:py-18 relative overflow-hidden border-t border-emerald-800/60">
+        
+        {/* Decorative background glow */}
+        <div className="absolute inset-0 opacity-15 pointer-events-none">
+          <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full bg-emerald-400 blur-3xl" />
+          <div className="absolute bottom-0 left-1/4 w-80 h-80 rounded-full bg-amber-400 blur-3xl" />
+        </div>
 
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight max-w-xl">
-            Punya Pakaian Bekas Tak Terpakai? Ubah Jadi Karya Seni!
+        <div className="container-site relative z-10 text-center max-w-3xl mx-auto flex flex-col items-center gap-4">
+          {/* Teks Inisiatif Sirkular ClothLoop */}
+          <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-amber-300">
+            Inisiatif Sirkular ClothLoop
+          </span>
+
+          <h2 className="text-2xl sm:text-4xl font-black text-white leading-tight">
+            Punya Pakaian Bekas Tak Terpakai di Lemari?
           </h2>
 
-          <p className="text-xs sm:text-sm text-emerald-100/80 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-normal max-w-2xl">
             Sumbangkan pakaian Anda melalui program <strong>ClothDrop</strong> agar dapat diolah dan direkonstruksi oleh studio perajin lokal menjadi karya kerajinan yang indah, bernilai tinggi, dan dapat digunakan kembali. Dapatkan reward <strong>ClothPoints</strong> untuk setiap helai yang Anda donasikan!
           </p>
 
           <div className="pt-2">
             <Link
               href="/drop"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-yellow-400 text-amber-950 px-6 py-3.5 rounded-full font-black text-xs sm:text-sm shadow-xl hover:scale-105 transition-transform"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-yellow-400 text-amber-950 px-7 py-3.5 rounded-full font-black text-xs sm:text-sm shadow-xl hover:scale-105 transition-transform"
             >
               <span>Donasikan Pakaian Sekarang (Drop Baju)</span>
               <ArrowRight size={16} />
