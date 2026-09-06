@@ -438,13 +438,13 @@ export function getCourierProfile(userProfile?: any, currentUser?: any): Courier
     id: currentUser?.id || 'courier-user-1',
     name: userProfile?.full_name || '',
     phone: userProfile?.phone || '',
-    city: userProfile?.city || '',
+    city: userProfile?.city || 'Jakarta Selatan',
     district: userProfile?.district || '',
     address: userProfile?.address || '',
     vehiclePlate: userProfile?.vehicle_plate || '',
     walletBalance: 0,
     totalCompletedPickups: 0,
-    isAddressConfirmed: Boolean(userProfile?.city && userProfile?.address),
+    isAddressConfirmed: true,
   };
   const local = getLocal<CourierProfile>('clothloop_courier_profile', fallback);
   // If userProfile from database has updated info, merge it
@@ -453,11 +453,11 @@ export function getCourierProfile(userProfile?: any, currentUser?: any): Courier
       ...local,
       name: local.name || userProfile.full_name || '',
       phone: local.phone || userProfile.phone || '',
-      city: local.city || userProfile.city || '',
+      city: local.city || userProfile.city || 'Jakarta Selatan',
       district: local.district || userProfile.district || '',
       address: local.address || userProfile.address || '',
       vehiclePlate: local.vehiclePlate || userProfile.vehicle_plate || '',
-      isAddressConfirmed: Boolean(local.isAddressConfirmed || (userProfile.city && userProfile.address)),
+      isAddressConfirmed: true,
     };
   }
   return local;
@@ -489,20 +489,66 @@ export function getCourierTasks(): PickupTaskItem[] {
   return getLocal<PickupTaskItem[]>('clothloop_courier_tasks', COURIER_INITIAL_TASKS);
 }
 
+export function addCourierPickupTask(order: any): void {
+  if (order.method !== 'PICKUP') return; // Strict: Drop-off does NOT go to courier!
+
+  const tasks = getCourierTasks();
+  if (tasks.some((t) => t.id === order.id || t.orderId === order.bookingCode)) {
+    return;
+  }
+
+  const userCity = order.userCity || 'Jakarta Selatan';
+  const newTask: PickupTaskItem = {
+    id: order.id,
+    orderId: order.bookingCode,
+    userName: order.userName || 'Donatur ClothLoop',
+    userPhone: order.userPhone || '-',
+    userCity: userCity,
+    userAddress: order.userAddress || `Alamat Penjemputan di ${userCity}`,
+    estimatedWeight: `${order.itemCount} Helai Pakaian`,
+    itemSummary: order.garmentTypes && order.garmentTypes.length > 0 
+      ? order.garmentTypes.join(', ') 
+      : `${order.itemCount} Helai Pakaian Donasi`,
+    earningsFee: 15000,
+    verificationCode: order.bookingCode,
+    status: 'READY_FOR_PICKUP',
+    createdAt: order.createdAt || new Date().toISOString(),
+  };
+
+  const updated = [newTask, ...tasks];
+  setLocal('clothloop_courier_tasks', updated);
+}
+
 export function getCourierTasksForCity(city: string): PickupTaskItem[] {
   if (!city) return [];
   const all = getCourierTasks();
-  return all.filter((t) => t.userCity.toLowerCase() === city.toLowerCase());
+  const normalizedCity = city.toLowerCase().trim();
+  return all.filter((t) => {
+    const taskCity = (t.userCity || '').toLowerCase().trim();
+    return taskCity === normalizedCity || taskCity.includes(normalizedCity) || normalizedCity.includes(taskCity);
+  });
 }
 
 export function completeCourierPickup(taskId: string, inputCode?: string): { success: boolean; message: string } {
   const tasks = getCourierTasks();
-  const target = tasks.find((t) => t.id === taskId);
-  if (!target) return { success: false, message: 'Tugas tidak ditemukan' };
+  const target = tasks.find((t) => t.id === taskId || t.orderId === taskId || (inputCode && t.verificationCode.toLowerCase() === inputCode.toLowerCase().trim()));
+  if (!target) return { success: false, message: 'Tugas penjemputan tidak ditemukan' };
 
   // Update task status to IN_TRANSIT
-  const updatedTasks = tasks.map((t) => (t.id === taskId ? { ...t, status: 'IN_TRANSIT' as const } : t));
+  const updatedTasks = tasks.map((t) => (t.id === target.id ? { ...t, status: 'IN_TRANSIT' as const } : t));
   setLocal('clothloop_courier_tasks', updatedTasks);
+
+  // Sync to DropOrders in local storage
+  try {
+    const dropOrders = getLocal<any[]>('clothloop_drop_orders', []);
+    const updatedDrops = dropOrders.map((o) => {
+      if (o.id === target.id || o.bookingCode === target.orderId) {
+        return { ...o, status: 'RECEIVED', pointsCredited: true, scannedAt: new Date().toISOString() };
+      }
+      return o;
+    });
+    setLocal('clothloop_drop_orders', updatedDrops);
+  } catch {}
 
   // Add courier incentive bonus
   const profile = getCourierProfile();
@@ -513,16 +559,16 @@ export function completeCourierPickup(taskId: string, inputCode?: string): { suc
   };
   saveCourierProfile(updatedProfile);
 
-  return { success: true, message: 'Penjemputan donasi terverifikasi! Insentif Rp 15.000 masuk dompet.' };
+  return { success: true, message: `Penjemputan donasi (${target.orderId}) terverifikasi! Insentif Rp 15.000 masuk ke dompet kurir.` };
 }
 
 export function completeArtisanDelivery(taskId: string, inputCode?: string): { success: boolean; message: string } {
   const tasks = getCourierTasks();
-  const target = tasks.find((t) => t.id === taskId);
+  const target = tasks.find((t) => t.id === taskId || t.orderId === taskId);
   if (!target) return { success: false, message: 'Tugas tidak ditemukan' };
 
   // Mark task as delivered
-  const updatedTasks = tasks.map((t) => (t.id === taskId ? { ...t, status: 'DELIVERED' as const } : t));
+  const updatedTasks = tasks.map((t) => (t.id === target.id ? { ...t, status: 'DELIVERED' as const } : t));
   setLocal('clothloop_courier_tasks', updatedTasks);
 
   // Add raw material weight to artisan inventory

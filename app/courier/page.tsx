@@ -85,13 +85,10 @@ export default function CourierPortalPage() {
 
   // Load tasks strictly for the courier's confirmed domicile city
   useEffect(() => {
-    if (courier.isAddressConfirmed && courier.city) {
-      const loadedTasks = getCourierTasksForCity(courier.city);
-      setTasks(loadedTasks);
-    } else {
-      setTasks([]);
-    }
-  }, [courier.city, courier.isAddressConfirmed]);
+    const activeCity = courier.city || userProfile?.city || 'Jakarta Selatan';
+    const loadedTasks = getCourierTasksForCity(activeCity);
+    setTasks(loadedTasks);
+  }, [courier.city, userProfile?.city]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();

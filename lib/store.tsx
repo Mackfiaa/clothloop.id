@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { DropOrder, DropOrderStatus, CartItem, UpcycleRequest, RewardVoucher, MarketItem, UserRole, CraftOrder, CraftOrderStatus } from './types';
 import { createClient } from './supabase/client';
 import { fetchDropOrdersFromSupabase, fetchMarketplaceOrdersFromSupabase, saveMarketplaceOrderToSupabase, updateMarketplaceOrderStatusInSupabase } from './supabase/data';
+import { addCourierPickupTask } from './supabase/portalData';
 import { User } from '@supabase/supabase-js';
 
 interface AppNotification {
@@ -263,7 +264,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       status: order.method === 'PICKUP' ? 'PENDING' : 'PENDING',
     };
 
-    setDropOrders((prev) => [orderWithState, ...prev]);
+    setDropOrders((prev) => {
+      const updated = [orderWithState, ...prev];
+      try {
+        localStorage.setItem('clothloop_drop_orders', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // Auto-dispatch task to couriers in the same city if method is PICKUP
+    if (orderWithState.method === 'PICKUP') {
+      try {
+        addCourierPickupTask(orderWithState);
+      } catch {}
+    }
 
     // If user logged in, persist to Supabase
     if (currentUser) {
